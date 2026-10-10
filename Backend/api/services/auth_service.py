@@ -8,7 +8,12 @@ from typing import Optional
 import os
 
 # Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY or len(SECRET_KEY) < 32:
+    raise RuntimeError(
+        "JWT_SECRET_KEY doit être défini (32 caractères minimum). "
+        "Générez-en une avec : python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 heures
 
