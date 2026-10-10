@@ -1,8 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 class ChatQueryRequest(BaseModel):
-    question: str
+    question: str = Field(..., max_length=2000)
     conversation_id: Optional[str] = None  # Pour maintenir le contexte
 
 class Citation(BaseModel):
