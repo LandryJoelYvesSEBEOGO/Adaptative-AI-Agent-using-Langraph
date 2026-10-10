@@ -51,7 +51,7 @@ async def register(request: RegisterRequest):
         email=request.email,
         password=request.password,
         name=request.name,
-        role=request.role
+        role="user"  # le rôle n'est jamais choisi par le client
     )
     
     if not user:
