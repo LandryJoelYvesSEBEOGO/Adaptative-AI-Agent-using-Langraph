@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple
 import uuid
 import time
 import re
+import logging
 
 # Ajouter le chemin du projet
 project_root = Path(__file__).parent.parent.parent
@@ -19,6 +20,8 @@ from src.rag.Rag_model import (
     Rewrite_query
 )
 from config.Config import Config
+
+logger = logging.getLogger(__name__)
 
 def extract_citations(response_text: str, documents: Optional[List] = None) -> List[Dict]:
     """
@@ -144,6 +147,7 @@ def process_rag_query(question: str, conversation_id: Optional[str] = None) -> D
         }
     
     except Exception as e:
+        logger.exception("Erreur lors du traitement RAG")
         latency = time.time() - start_time
         return {
             "response": "",
@@ -151,7 +155,7 @@ def process_rag_query(question: str, conversation_id: Optional[str] = None) -> D
             "conversation_id": conversation_id or str(uuid.uuid4()),
             "latency": latency,
             "success": False,
-            "error": str(e)
+            "error": "Erreur lors du traitement de la requête"
         }
 
 def process_rag_query_stream(question: str, conversation_id: Optional[str] = None):
@@ -231,5 +235,6 @@ def process_rag_query_stream(question: str, conversation_id: Optional[str] = Non
         # Les citations sont maintenant gérées séparément via l'API, pas dans le texte de réponse
         # Suppression de l'affichage __CITATIONS__ dans le texte pour éviter l'affichage brut sur le frontend
     
-    except Exception as e:
-        yield f"⚠️ Erreur lors de la génération: {str(e)}"
+    except Exception:
+        logger.exception("Erreur lors du streaming RAG")
+        yield "⚠️ Erreur lors de la génération de la réponse."
