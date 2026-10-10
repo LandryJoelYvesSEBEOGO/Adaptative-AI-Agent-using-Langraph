@@ -82,3 +82,16 @@ Vérifiez que `Backend/api/middleware.py` contient bien l'origine de votre front
 - L'API écoute sur `http://0.0.0.0:8000` (accessible via `http://localhost:8000`)
 - Le mode `reload=True` permet le rechargement automatique lors des modifications
 
+
+
+## Variables d'environnement d'authentification
+
+À définir dans `Backend/.env` avant de lancer l'API :
+
+| Variable | Obligatoire | Description |
+|---|---|---|
+| `JWT_SECRET_KEY` | Oui (32 caractères min.) | Clé de signature des JWT. Générer avec `python -c "import secrets; print(secrets.token_urlsafe(48))"`. L'API refuse de démarrer sans elle. |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Non | Crée un compte administrateur au démarrage. |
+| `DEFAULT_USER_EMAIL` / `DEFAULT_USER_PASSWORD` | Non | Crée un compte utilisateur standard au démarrage. |
+
+Les routes `/api/v1/chat/*` exigent un token valide, et `/api/v1/admin/*` un token de rôle `admin`.
