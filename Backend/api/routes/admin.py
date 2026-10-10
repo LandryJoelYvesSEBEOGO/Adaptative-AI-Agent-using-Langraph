@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional, List
+from api.dependencies import require_admin
 from api.models.admin import (
     MetricOverview,
     RequestDataPoint,
@@ -15,18 +16,17 @@ from api.services.metrics_service import (
     get_recent_requests
 )
 
-router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
-
-# TODO: Ajouter une dépendance d'authentification pour vérifier le role "admin"
-# from api.dependencies import require_admin
+router = APIRouter(
+    prefix="/api/v1/admin",
+    tags=["admin"],
+    dependencies=[Depends(require_admin)],
+)
 
 @router.get("/metrics/overview", response_model=MetricOverview)
 async def get_overview():
     """
     Retourne un aperçu des métriques du système.
     """
-    # await require_admin()  # À décommenter une fois l'auth implémentée
-    
     overview = get_metrics_overview()
     return MetricOverview(**overview)
 
@@ -35,8 +35,6 @@ async def get_requests_metrics(days: Optional[int] = 7):
     """
     Retourne les données pour le graphique des requêtes.
     """
-    # await require_admin()
-    
     chart_data = get_requests_chart_data(days=days)
     return [RequestDataPoint(**item) for item in chart_data]
 
@@ -45,8 +43,6 @@ async def get_recent_requests_endpoint(limit: Optional[int] = 10):
     """
     Retourne les requêtes récentes.
     """
-    # await require_admin()
-    
     requests = get_recent_requests(limit=limit)
     return [RecentRequest(**req) for req in requests]
 
@@ -55,8 +51,6 @@ async def get_error_distribution_endpoint():
     """
     Retourne la répartition des erreurs.
     """
-    # await require_admin()
-    
     distribution = get_error_distribution()
     return ErrorDistribution(**distribution)
 
@@ -65,7 +59,5 @@ async def get_system_status_endpoint():
     """
     Retourne le statut du système.
     """
-    # await require_admin()
-    
     status = get_system_status()
     return SystemStatus(**status)

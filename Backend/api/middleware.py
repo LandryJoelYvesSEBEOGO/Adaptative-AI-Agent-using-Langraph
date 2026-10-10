@@ -83,7 +83,6 @@ async def log_requests(request: Request, call_next):
             content={
                 "success": False,
                 "error": "Erreur serveur interne",
-                "detail": error_message if "detail" in str(e).lower() else None,
                 "type": error_type,
                 "path": request.url.path,
             }

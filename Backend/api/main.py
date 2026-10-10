@@ -67,7 +67,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={
             "success": False,
             "error": "Erreur serveur interne",
-            "detail": error_message,
             "type": error_type,
             "path": path,
         }
@@ -75,43 +74,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Ajouter le middleware de logging après CORS
 app.middleware("http")(log_requests)
-
-# Handler explicite pour les requêtes OPTIONS (preflight CORS)
-@app.options("/{full_path:path}")
-async def options_handler(request: Request, full_path: str):
-    """
-    Handler pour les requêtes OPTIONS (preflight CORS).
-    Le middleware CORS devrait normalement gérer cela, mais ce handler
-    garantit que les requêtes OPTIONS sont toujours acceptées avec les bons headers.
-    """
-    from fastapi.responses import Response
-    
-    # Récupérer l'origin de la requête pour le retourner (si autorisé)
-    origin = request.headers.get("origin", "*")
-    allowed_origins = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:8080",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8080",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ]
-    
-    # Si l'origin est autorisé, le retourner, sinon utiliser *
-    allow_origin = origin if origin in allowed_origins else "*"
-    
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": allow_origin,
-            "Access-Control-Allow-Methods": "*",  # Autorise toutes les méthodes
-            "Access-Control-Allow-Headers": "*",  # Autorise tous les headers
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Max-Age": "3600",
-        }
-    )
 
 # Inclure les routers
 app.include_router(auth.router)

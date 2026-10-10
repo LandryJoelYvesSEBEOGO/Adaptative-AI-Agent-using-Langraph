@@ -8,29 +8,35 @@ from typing import Optional
 import os
 
 # Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY or len(SECRET_KEY) < 32:
+    raise RuntimeError(
+        "JWT_SECRET_KEY doit être défini (32 caractères minimum). "
+        "Générez-en une avec : python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 heures
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Base de données utilisateurs (à remplacer par une vraie DB)
-MOCK_USERS = [
-    {
-        "id": "1",
-        "email": "admin@rag-system.io",
-        "hashed_password": pwd_context.hash("admin"),
-        "name": "Admin User",
-        "role": "admin"
-    },
-    {
-        "id": "2",
-        "email": "user@rag-system.io",
-        "hashed_password": pwd_context.hash("user"),
-        "name": "Standard User",
-        "role": "user"
-    }
-]
+# Aucun compte par défaut : les comptes initiaux sont créés depuis l'environnement.
+MOCK_USERS = []
+
+def _seed_user(prefix: str, name: str, role: str) -> None:
+    email = os.getenv(f"{prefix}_EMAIL")
+    password = os.getenv(f"{prefix}_PASSWORD")
+    if email and password:
+        MOCK_USERS.append({
+            "id": str(len(MOCK_USERS) + 1),
+            "email": email.lower(),
+            "hashed_password": pwd_context.hash(password),
+            "name": name,
+            "role": role,
+        })
+
+_seed_user("ADMIN", "Admin User", "admin")
+_seed_user("DEFAULT_USER", "Standard User", "user")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Vérifie un mot de passe."""

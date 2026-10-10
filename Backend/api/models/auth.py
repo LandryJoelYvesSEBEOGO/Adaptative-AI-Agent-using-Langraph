@@ -9,7 +9,6 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     name: str
-    role: str = "user"  # "admin" | "user" - par défaut "user"
 
 class LoginResponse(BaseModel):
     success: bool
