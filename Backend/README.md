@@ -46,7 +46,6 @@ uv run uvicorn api.main:app --reload --port 8000
 
 ```bash
 python scripts/rebuild_index.py   # Reconstruit l'index Chroma et le cache BM25 depuis data/raw/
-python scripts/view_metrics.py    # Affiche les métriques collectées
 python scripts/check_gpu.py       # Vérifie la disponibilité de CUDA
 ```
 

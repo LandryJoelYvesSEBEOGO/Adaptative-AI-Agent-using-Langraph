@@ -16,7 +16,6 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 
 from config.Config import Config
-from src.core.metrics import get_metrics_collector
 from src.rag.Prompts import get_prompts
 
 
@@ -316,83 +315,6 @@ def test_scoring_logic():
         return False
 
 
-def test_metrics_integration():
-    """Test 4: Vérification de l'intégration avec les métriques."""
-    print_header("TEST 4: Vérification de l'Intégration avec les Métriques")
-
-    try:
-        print_test("Vérification de l'enregistrement des métriques...")
-
-        metrics = get_metrics_collector()
-
-        # Créer un exemple de scores
-        test_scores = {
-            "relevance": 0.85,
-            "completeness": 0.80,
-            "conciseness": 0.75,
-            "accuracy": 0.90,
-            "coherence": 0.85,
-            "overall_score": 0.83,
-            "accepted": True,
-            "reasoning": "Test reasoning",
-        }
-
-        # Enregistrer une métrique de test
-        metrics.record_request(
-            conversation_id="test-answer-quality-001",
-            query="Test question",
-            latencies={"end_to_end": 2.5, "answer_quality": 1.2},
-            success=True,
-            num_documents=3,
-            response_length=150,
-            answer_quality_score=test_scores["overall_score"],
-            answer_quality_scores=test_scores,
-        )
-
-        print_success("Métrique enregistrée avec succès")
-
-        # Vérifier que les statistiques incluent les scores de qualité
-        stats = metrics.get_statistics()
-
-        if "answer_quality_stats" not in stats:
-            print_error("Les statistiques de qualité ne sont pas présentes")
-            return False
-
-        print_success("Les statistiques de qualité sont présentes")
-
-        if "answer_quality_breakdown" not in stats:
-            print_error("Le breakdown de qualité n'est pas présent")
-            return False
-
-        print_success("Le breakdown de qualité est présent")
-
-        # Afficher les statistiques
-        quality_stats = stats.get("answer_quality_stats", {})
-        if "overall" in quality_stats:
-            overall_stats = quality_stats["overall"]
-            print_info("\n📊 Statistiques de qualité globale:")
-            print_info(f"  Nombre de scores: {overall_stats.get('count', 0)}")
-            print_info(f"  Moyenne: {overall_stats.get('mean', 0):.3f}")
-            print_info(f"  Médiane: {overall_stats.get('median', 0):.3f}")
-
-        breakdown = stats.get("answer_quality_breakdown", {})
-        if breakdown:
-            print_info("\n📊 Breakdown par critère:")
-            for criterion, criterion_stats in breakdown.items():
-                print_info(f"  {criterion.capitalize()}:")
-                print_info(f"    Nombre: {criterion_stats.get('count', 0)}")
-                print_info(f"    Moyenne: {criterion_stats.get('mean', 0):.3f}")
-                print_info(f"    Médiane: {criterion_stats.get('median', 0):.3f}")
-
-        return True
-
-    except Exception as e:
-        print_error(f"Erreur lors de la vérification des métriques: {str(e)}")
-        import traceback
-
-        traceback.print_exc()
-        return False
-
 
 def test_workflow_integration():
     """Test 5: Test d'intégration avec le workflow (optionnel, nécessite des documents)."""
@@ -422,15 +344,6 @@ def test_workflow_integration():
 
         print_success(f"Réponse générée en {elapsed_time:.2f}s")
         print_info(f"\nRéponse:\n{response[:200]}...")
-
-        # Vérifier les métriques
-        metrics = get_metrics_collector()
-        stats = metrics.get_statistics()
-
-        if stats.get("answer_quality_stats", {}).get("overall", {}).get("count", 0) > 0:
-            print_success("Les scores de qualité ont été enregistrés dans les métriques")
-        else:
-            print_warning("Aucun score de qualité trouvé dans les métriques")
 
         return True
 
@@ -462,7 +375,6 @@ def main():
     results.append(("Logique de Scoring", test_scoring_logic()))
 
     # Test 4: Intégration métriques
-    results.append(("Intégration Métriques", test_metrics_integration()))
 
     # Test 5: Intégration workflow (optionnel)
     import sys

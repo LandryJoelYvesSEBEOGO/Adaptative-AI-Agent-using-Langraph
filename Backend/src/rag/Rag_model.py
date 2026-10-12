@@ -39,7 +39,6 @@ from src.core.exceptions import (
     GenerationException,  # ✅ utilisé pour les erreurs de génération (streaming et non-streaming)
 )
 import uuid
-from src.core.metrics import get_metrics_collector
 from src.core.retrieval_metrics import get_retrieval_metrics_collector
 from src.core.logger import get_logger
 from src.core.retry_policy import (
@@ -52,7 +51,6 @@ from src.core.groq_key_manager import get_groq_key_manager
 
 # Initialiser logger et metrics
 logger = get_logger()
-metrics = get_metrics_collector()
 # Load environment variables
 load_dotenv()
 Config.export_runtime_env()
@@ -1623,19 +1621,6 @@ def get_final_response(query: str) -> str:
         # Mesurer latence end-to-end
         latencies["end_to_end"] = time.time() - start_time
         
-        # Enregistrer les métriques
-        if getattr(Config, 'METRICS_ENABLED', True):
-            answer_quality_scores = final_state.get("answer_quality_scores")
-            metrics.record_request(
-                conversation_id=conversation_id,
-                query=query,
-                latencies=latencies,
-                success=True,
-                num_documents=len(final_state.get("documents", [])),
-                response_length=len(response) if response else 0,
-                answer_quality_score=answer_quality_scores.get("overall_score") if answer_quality_scores else None,
-                answer_quality_scores=answer_quality_scores
-            )
         
         logger.info(
             "Request completed",
@@ -1653,14 +1638,6 @@ def get_final_response(query: str) -> str:
         latencies["end_to_end"] = time.time() - start_time
         error_msg = "⚠️ Désolé, j'ai atteint le nombre maximum de tentatives. Veuillez reformuler votre question ou réessayer plus tard."
         
-        if getattr(Config, 'METRICS_ENABLED', True):
-            metrics.record_request(
-                conversation_id=conversation_id,
-                query=query,
-                latencies=latencies,
-                success=False,
-                error="MaxRetriesException"
-            )
         
         logger.warning(
             "Request max retries",
@@ -1677,14 +1654,6 @@ def get_final_response(query: str) -> str:
         latencies["end_to_end"] = time.time() - start_time
         error_msg = "⚠️ Le service est temporairement saturé. Veuillez réessayer dans quelques instants."
         
-        if getattr(Config, 'METRICS_ENABLED', True):
-            metrics.record_request(
-                conversation_id=conversation_id,
-                query=query,
-                latencies=latencies,
-                success=False,
-                error="LLMQuotaException"
-            )
         
         logger.error(
             "Request quota exceeded",
@@ -1701,14 +1670,6 @@ def get_final_response(query: str) -> str:
         latencies["end_to_end"] = time.time() - start_time
         error_msg = "⚠️ Impossible de trouver des documents pertinents. Veuillez reformuler votre question."
         
-        if getattr(Config, 'METRICS_ENABLED', True):
-            metrics.record_request(
-                conversation_id=conversation_id,
-                query=query,
-                latencies=latencies,
-                success=False,
-                error="RetrievalException"
-            )
         
         logger.error(
             "Request retrieval failed",
@@ -1725,14 +1686,6 @@ def get_final_response(query: str) -> str:
         latencies["end_to_end"] = time.time() - start_time
         error_msg = "⚠️ Erreur lors de la recherche web. Veuillez réessayer."
         
-        if getattr(Config, 'METRICS_ENABLED', True):
-            metrics.record_request(
-                conversation_id=conversation_id,
-                query=query,
-                latencies=latencies,
-                success=False,
-                error="WebSearchException"
-            )
         
         logger.error(
             "Request web search failed",
@@ -1750,14 +1703,6 @@ def get_final_response(query: str) -> str:
         error_msg = str(e)
         
         # Enregistrer l'erreur
-        if getattr(Config, 'METRICS_ENABLED', True):
-            metrics.record_request(
-                conversation_id=conversation_id,
-                query=query,
-                latencies=latencies,
-                success=False,
-                error=error_msg
-            )
         
         logger.error(
             "Request failed",
@@ -1891,19 +1836,6 @@ def get_final_response_stream(query: str):
         generation = final_state.get("generation", "")
         full_response = generation if isinstance(generation, str) else (generation.content if hasattr(generation, 'content') else str(generation))
         
-        # Enregistrer les métriques
-        if getattr(Config, 'METRICS_ENABLED', True):
-            answer_quality_scores = final_state.get("answer_quality_scores")
-            metrics.record_request(
-                conversation_id=conversation_id,
-                query=query,
-                latencies=latencies,
-                success=True,
-                num_documents=len(final_state.get("documents", [])),
-                response_length=len(full_response) if full_response else 0,
-                answer_quality_score=answer_quality_scores.get("overall_score") if answer_quality_scores else None,
-                answer_quality_scores=answer_quality_scores
-            )
         
         logger.info(
             "Streaming request completed",
@@ -1920,14 +1852,6 @@ def get_final_response_stream(query: str):
         error_msg = f"⚠️ Erreur lors de la génération: {str(e)}"
         yield error_msg
         
-        if getattr(Config, 'METRICS_ENABLED', True):
-            metrics.record_request(
-                conversation_id=conversation_id,
-                query=query,
-                latencies=latencies,
-                success=False,
-                error=str(e)
-            )
         
         logger.error(
             "Streaming request failed",

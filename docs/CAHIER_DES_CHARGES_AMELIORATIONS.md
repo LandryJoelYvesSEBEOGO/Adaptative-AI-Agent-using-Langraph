@@ -153,7 +153,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [ ] **L2.3** PostgreSQL + SQLAlchemy 2 + Alembic ; tables `users`, `conversations`, `messages`, `rag_requests`, `feedback`, `documents`.
 - [ ] **L2.4** Découper `Rag_model.py` en modules (`retrieval/`, `generation/`, `grading/`, `graph.py`) sans effet de bord à l'import.
 - [ ] **L2.5** Routes async ; le travail bloquant sort de la boucle d'événements. *Acceptation : deux requêtes simultanées sont traitées en parallèle.*
-- [ ] **L2.6** Supprimer le code dupliqué (`metrics_service.py`) et le système de métriques JSONL redondant.
+- [x] **L2.6** Supprimer le code dupliqué (`metrics_service.py`) et le système de métriques JSONL redondant.
 - [ ] **L2.7** `docker compose` (api, postgres, frontend) + CI GitHub Actions (lint, typage, tests, build).
 
 ### Lot 3 — Qualité du RAG *(1 à 2 semaines)*

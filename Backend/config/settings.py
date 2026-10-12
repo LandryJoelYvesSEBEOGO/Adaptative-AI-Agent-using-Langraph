@@ -50,7 +50,6 @@ class Settings(BaseSettings):
     DEVICE_PREFERENCE: Literal["auto", "cuda", "cpu"] = "auto"
 
     # --- Chemins ---
-    METRICS_DIR: str = str(DATA_DIR / "metrics")
     LOGS_DIR: str = str(DATA_DIR / "logs")
     RETRIEVAL_METRICS_FILE: str = str(DATA_DIR / "metrics" / "retrieval_results.jsonl")
     FEW_SHOT_EXAMPLES_FILE: str = str(DATA_DIR / "few_shot_examples.json")
@@ -65,7 +64,6 @@ class Settings(BaseSettings):
     LLM_TIMEOUT: int = 30
     RETRIEVAL_TIMEOUT: int = 10
     WEB_SEARCH_TIMEOUT: int = 15
-    METRICS_ENABLED: bool = True  # Activer/désactiver les métriques
     ALERT_LATENCY_THRESHOLD: float = 10.0  # Alerter si latence > 10s
     ALERT_ERROR_RATE_THRESHOLD: float = 0.05  # Alerter si taux d'erreur > 5%
     HYBRID_SEARCH_ENABLED: bool = True  # Activer/désactiver hybrid search
@@ -96,7 +94,6 @@ class Settings(BaseSettings):
     METADATA_MAX_ENTITIES: int = 10  # Nombre maximum d'entités
     METADATA_MAX_TOPICS: int = 3  # Nombre maximum de sujets
     METADATA_SUMMARY_MAX_LENGTH: int = 100  # Longueur max du résumé en mots
-    RETRIEVAL_METRICS_ENABLED: bool = (
         True  # Activer/désactiver l'enregistrement des résultats retrieval
     )
     CITATIONS_ENABLED: bool = True  # Activer/désactiver les citations automatiques
