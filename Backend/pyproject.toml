@@ -30,7 +30,12 @@ dependencies = [
     "chromadb>=0.5",
     "tavily-python>=0.3",
     "tqdm>=4.66",
-    # Extraction de métadonnées locale (voir lot 3 : sortira du processus de l'API)
+]
+
+[project.optional-dependencies]
+# Modèles locaux (reranker cross-encoder, métadonnées, embeddings) : lourds, exclus de la CI.
+# Ils sortiront du processus de l'API au lot 3.
+ml = [
     "keybert>=0.8",
     "spacy>=3.7",
     "bertopic>=0.16",

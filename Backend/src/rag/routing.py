@@ -4,11 +4,12 @@ from typing import Dict
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.core.retry_policy import retry_with_backoff_advanced
+from src.rag.state import GraphState
 from src.rag.runtime import get_runtime
 
 
 # Edge functions
-def route_question(state: Dict) -> str:
+def route_question(state: GraphState) -> str:
     """Route the question to either web search or RAG based on LLM decision."""
     try:
         print("---ROUTE QUESTION---")
@@ -38,7 +39,7 @@ def route_question(state: Dict) -> str:
         return "vectorstore"  # Fallback sur vectorstore
 
 
-def decide_to_generate(state: Dict) -> str:
+def decide_to_generate(state: GraphState) -> str:
     """Decide whether to generate an answer or add web search."""
     print("---ASSESS GRADED DOCUMENTS---")
     if state.get("web_search") == "Yes":

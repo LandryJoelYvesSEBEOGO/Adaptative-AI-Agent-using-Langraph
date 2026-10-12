@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_PROJECT: str = "rag-system"
 
+    # --- CORS : origines autorisées, séparées par des virgules ---
+    CORS_ORIGINS: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,"
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080,"
+        "http://localhost:8081,http://127.0.0.1:8081"
+    )
+
     # --- Base de données ---
     # URL SQLAlchemy, ex. postgresql+psycopg://user:pass@host:5432/rag. Vide : SQLite local.
     DATABASE_URL: str = ""
@@ -143,6 +150,10 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_to_none(cls, value):
         return value or None
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     @property
     def database_url(self) -> str:

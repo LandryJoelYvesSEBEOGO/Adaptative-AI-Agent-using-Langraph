@@ -4,6 +4,7 @@ from typing import Dict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from src.rag.state import GraphState
 from config.Config import Config
 from src.core.logger import get_logger
 from src.core.retry_policy import retry_with_backoff_advanced
@@ -11,7 +12,7 @@ from src.rag.generation.formatting import format_docs
 from src.rag.runtime import get_runtime
 
 
-def grade_answer_quality(state: Dict) -> Dict:
+def grade_answer_quality(state: GraphState) -> GraphState:
     """Évalue la qualité de la réponse générée sur 5 critères."""
     start_time = time.time()
     conversation_id = state.get("conversation_id", "unknown")

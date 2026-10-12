@@ -5,7 +5,7 @@ from typing_extensions import TypedDict
 
 
 # GraphState definition
-class GraphState(TypedDict):
+class GraphState(TypedDict, total=False):
     question: str
     generation: str
     web_search: str

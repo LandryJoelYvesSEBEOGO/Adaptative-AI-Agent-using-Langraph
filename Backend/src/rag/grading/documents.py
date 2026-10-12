@@ -4,6 +4,7 @@ from typing import Dict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from src.rag.state import GraphState
 from config.Config import Config
 from src.core.logger import get_logger
 from src.core.retry_policy import retry_with_backoff_advanced
@@ -11,7 +12,7 @@ from src.rag.Prompts import get_prompts
 from src.rag.runtime import get_runtime
 
 
-def grade_documents(state: Dict) -> Dict:
+def grade_documents(state: GraphState) -> GraphState:
     """Grade the relevance of retrieved documents using multi-criteria evaluation."""
     start_time = time.time()
     conversation_id = state.get("conversation_id", "unknown")

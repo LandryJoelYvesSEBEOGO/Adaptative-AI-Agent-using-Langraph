@@ -3,6 +3,7 @@ from typing import Dict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from src.rag.state import GraphState
 from config.Config import Config
 from src.core.exceptions import (
     MaxRetriesException,
@@ -15,7 +16,7 @@ from src.rag.llm_utils import get_llm_with_fallback
 from src.rag.runtime import get_runtime
 
 
-def grade_generation_v_documents_and_question(state: Dict) -> str:
+def grade_generation_v_documents_and_question(state: GraphState) -> str:
     """Grade whether the generation is grounded in the document and answers the question."""
     try:
         print("---CHECK HALLUCINATIONS---")

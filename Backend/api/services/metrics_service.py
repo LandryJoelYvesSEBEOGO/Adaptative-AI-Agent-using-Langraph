@@ -200,7 +200,7 @@ def get_latency_component_stats() -> List[Dict]:
     names = ("End-to-End", "Retrieval", "Generation", "Grading", "Web Search")
     result = []
     for index, name in enumerate(names):
-        values = [row[index] for row in rows if row[index] is not None]
+        values = [v for row in rows if (v := row[index]) is not None]
         result.append(
             {
                 "name": name,

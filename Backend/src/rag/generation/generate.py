@@ -3,6 +3,7 @@ from typing import Dict
 
 from langchain_core.messages import HumanMessage
 
+from src.rag.state import GraphState
 from config.Config import Config
 from src.core.exceptions import (
     GenerationException,  # ✅ utilisé pour les erreurs de génération (streaming et non-streaming)
@@ -21,7 +22,7 @@ from src.rag.Prompts import get_prompts
 from src.rag.runtime import get_runtime
 
 
-def generate(state: Dict) -> Dict:
+def generate(state: GraphState) -> GraphState:
     """Generate an answer using RAG on the retrieved documents."""
     start_time = time.time()
     conversation_id = state.get("conversation_id", "unknown")
@@ -132,7 +133,7 @@ def generate(state: Dict) -> Dict:
         raise GenerationException(error_msg) from e
 
 
-def generate_stream(state: Dict, stream_callback=None):
+def generate_stream(state: GraphState, stream_callback=None):
     """
     Génère une réponse avec streaming token par token.
 

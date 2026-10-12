@@ -4246,11 +4246,9 @@ source = { virtual = "." }
 dependencies = [
     { name = "alembic" },
     { name = "bcrypt" },
-    { name = "bertopic" },
     { name = "chromadb" },
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "keybert" },
     { name = "langchain" },
     { name = "langchain-community" },
     { name = "langchain-core" },
@@ -4258,7 +4256,6 @@ dependencies = [
     { name = "langchain-nomic" },
     { name = "langchain-text-splitters" },
     { name = "langgraph" },
-    { name = "nltk" },
     { name = "passlib", extra = ["bcrypt"] },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic", extra = ["email"] },
@@ -4266,14 +4263,21 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "python-jose", extra = ["cryptography"] },
     { name = "python-multipart" },
-    { name = "sentence-transformers" },
-    { name = "spacy" },
     { name = "sqlalchemy" },
     { name = "tavily-python" },
-    { name = "torch" },
     { name = "tqdm" },
-    { name = "transformers" },
     { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.optional-dependencies]
+ml = [
+    { name = "bertopic" },
+    { name = "keybert" },
+    { name = "nltk" },
+    { name = "sentence-transformers" },
+    { name = "spacy" },
+    { name = "torch" },
+    { name = "transformers" },
 ]
 
 [package.dev-dependencies]
@@ -4287,11 +4291,11 @@ dev = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.13" },
     { name = "bcrypt", specifier = ">=4.0.1,<5" },
-    { name = "bertopic", specifier = ">=0.16" },
+    { name = "bertopic", marker = "extra == 'ml'", specifier = ">=0.16" },
     { name = "chromadb", specifier = ">=0.5" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
-    { name = "keybert", specifier = ">=0.8" },
+    { name = "keybert", marker = "extra == 'ml'", specifier = ">=0.8" },
     { name = "langchain", specifier = ">=0.3" },
     { name = "langchain-community", specifier = ">=0.3" },
     { name = "langchain-core", specifier = ">=0.3" },
@@ -4299,7 +4303,7 @@ requires-dist = [
     { name = "langchain-nomic", specifier = ">=0.1" },
     { name = "langchain-text-splitters", specifier = ">=0.3" },
     { name = "langgraph", specifier = ">=0.2" },
-    { name = "nltk", specifier = ">=3.8" },
+    { name = "nltk", marker = "extra == 'ml'", specifier = ">=3.8" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.7" },
@@ -4307,15 +4311,16 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3" },
     { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "sentence-transformers", specifier = ">=2.2" },
-    { name = "spacy", specifier = ">=3.7" },
+    { name = "sentence-transformers", marker = "extra == 'ml'", specifier = ">=2.2" },
+    { name = "spacy", marker = "extra == 'ml'", specifier = ">=3.7" },
     { name = "sqlalchemy", specifier = ">=2.0" },
     { name = "tavily-python", specifier = ">=0.3" },
-    { name = "torch", specifier = ">=2.0" },
+    { name = "torch", marker = "extra == 'ml'", specifier = ">=2.0" },
     { name = "tqdm", specifier = ">=4.66" },
-    { name = "transformers", specifier = ">=4.35" },
+    { name = "transformers", marker = "extra == 'ml'", specifier = ">=4.35" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
+provides-extras = ["ml"]
 
 [package.metadata.requires-dev]
 dev = [

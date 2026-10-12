@@ -26,6 +26,17 @@ Agent de question-réponse à génération augmentée par récupération (RAG) :
 
 **Prérequis** : Python 3.11+, Node.js 20+.
 
+### Lancement en une commande (Docker)
+
+```bash
+cp Backend/.env.example Backend/.env   # renseigner les clés d'API et JWT_SECRET_KEY
+docker compose up --build
+```
+
+Frontend : http://localhost:8080 — API : http://localhost:8000/docs (PostgreSQL inclus, migrations appliquées au démarrage).
+
+### Lancement manuel
+
 ### 1. Backend
 
 ```bash

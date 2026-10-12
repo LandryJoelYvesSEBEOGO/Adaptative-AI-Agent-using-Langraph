@@ -6,6 +6,8 @@ from fastapi import Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from config.settings import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -13,18 +15,7 @@ def setup_cors(app):
     """Configure CORS pour permettre les requêtes depuis le frontend."""
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://localhost:3000",
-            "http://localhost:8080",
-            "http://localhost:8081",  # Frontend Vite
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:8080",
-            "http://127.0.0.1:8081",  # Frontend Vite en 127.0.0.1
-            "http://localhost:5174",
-            "http://127.0.0.1:5174",
-        ],
+        allow_origins=get_settings().cors_origins,
         allow_credentials=True,
         allow_methods=["*"],  # Autorise toutes les méthodes (GET, POST, OPTIONS, etc.)
         allow_headers=["*"],  # Autorise tous les headers

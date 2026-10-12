@@ -3,6 +3,7 @@ from typing import Dict
 
 from langchain_core.documents import Document
 
+from src.rag.state import GraphState
 from config.Config import Config
 from src.core.exceptions import (
     RetrievalException,
@@ -17,7 +18,7 @@ from src.rag.runtime import get_runtime
 
 
 # Node functions
-def retrieve(state: Dict) -> Dict:
+def retrieve(state: GraphState) -> GraphState:
     """Retrieve documents from the vector store."""
     start_time = time.time()
     conversation_id = state.get("conversation_id", "unknown")
@@ -171,7 +172,7 @@ def retrieve(state: Dict) -> Dict:
         raise RetrievalException(f"Erreur recuperation: {str(e)}") from e
 
 
-def web_search(state: Dict) -> Dict:
+def web_search(state: GraphState) -> GraphState:
     """Perform a web search based on the question."""
     start_time = time.time()
     conversation_id = state.get("conversation_id", "unknown")
