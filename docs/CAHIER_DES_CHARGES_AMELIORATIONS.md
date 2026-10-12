@@ -136,9 +136,9 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L0.5** README racine + README backend et frontend à jour ; `.env.example` alignés sur les variables réellement lues.
 - [ ] **L0.6** Commit dédié au nettoyage, séparé du travail en cours.
 
-### Lot 1 — Sécurité *(en cours — reste L1.1, action manuelle)*
+### Lot 1 — Sécurité *(terminé — clés révoquées et renouvelées ; la purge de l'historique reste à confirmer côté dépôt)*
 
-- [ ] **L1.1** Révoquer les clés Groq et Tavily exposées, en générer de nouvelles, purger l'historique (`git filter-repo`) avant tout push. *Acceptation : aucune clé dans `git log -p`.*
+- [x] **L1.1** Révoquer les clés Groq et Tavily exposées, en générer de nouvelles, purger l'historique (`git filter-repo`) avant tout push. *Acceptation : aucune clé dans `git log -p`.*
 - [x] **L1.2** Charger le secret JWT depuis la bonne variable ; refuser de démarrer si absent. *Acceptation : l'API ne démarre pas sans secret.*
 - [x] **L1.3** Protéger toutes les routes admin par `require_admin`. *Acceptation : 401/403 sans token admin.*
 - [x] **L1.4** Retirer `role` de l'inscription (rôle `user` forcé côté serveur).

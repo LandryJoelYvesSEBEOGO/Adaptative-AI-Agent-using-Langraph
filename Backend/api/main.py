@@ -1,6 +1,7 @@
 # Patch bcrypt pour passlib - DOIT être importé en premier
 from api.services.bcrypt_patch import *  # noqa: F401, F403
-
+from api.db import init_db
+from api.routes import conversation
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import logging
@@ -17,6 +18,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 # Créer l'application FastAPI
 app = FastAPI(
     title="RAG System API",
@@ -28,6 +30,9 @@ app = FastAPI(
 
 # Configurer CORS EN PREMIER - doit être avant tout autre middleware
 setup_cors(app)
+
+# Initialiser la base
+init_db()
 
 # Handler global pour les erreurs
 @app.exception_handler(Exception)
@@ -56,7 +61,6 @@ async def global_exception_handler(request: Request, exc: Exception):
             content={
                 "success": False,
                 "error": exc.detail,
-                "type": error_type,
                 "path": path,
             }
         )
@@ -67,7 +71,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={
             "success": False,
             "error": "Erreur serveur interne",
-            "type": error_type,
             "path": path,
         }
     )
@@ -79,7 +82,7 @@ app.middleware("http")(log_requests)
 app.include_router(auth.router)
 app.include_router(chat.router)  # Inclut aussi /feedback
 app.include_router(admin.router)
-
+app.include_router(conversation.router)
 @app.get("/")
 async def root():
     """Endpoint racine."""
