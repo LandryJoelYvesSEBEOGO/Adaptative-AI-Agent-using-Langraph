@@ -167,7 +167,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L3.7** Endpoint d'upload + ingestion asynchrone + statut par document *(si option B retenue)*. *Réalisé de façon neutre vis-à-vis de la décision produit : upload réservé aux administrateurs (corpus partagé), `owner_id` conservé pour l'option B ; CLI `scripts/ingest_corpus.py` pour l'option A. Tâche de fond FastAPI (`BackgroundTasks`), pas encore arq.*
 - [x] **L3.8** Évaluation automatique en CI sur un sous-ensemble du jeu de référence. *Garde-fou de retrieval à chaque PR (testé, y compris par mutation) ; workflow d'évaluation complète lancé à la demande (YAML validé, **jamais exécuté** : nécessite vos secrets).*
 
-### Lot 4 — Frontend *(~1 semaine)*
+### Lot 4 — Frontend *(terminé)*
 
 - [x] **L4.1** Mise à jour React 19, Vite, Tailwind 4, React Router 7 ; TypeScript strict. *Montées : React 19.3, Vite 8.3, Tailwind 4.3, React Router 7.18, Recharts 3.10, TypeScript 5.9 strict ; rendu comparé avant/après par captures (écarts : ombres personnalisées et interlignage des titres, désormais conformes au code).*
 - [x] **L4.2** Client API généré depuis l'OpenAPI ; suppression des deux clients manuels. *`openapi-typescript` + `openapi-fetch`, schéma versionné et contrôlé en CI ; renouvellement transparent de session ; flux SSE typé à la main (hors OpenAPI).*
@@ -176,7 +176,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L4.5** Citations au survol + panneau des sources avec aperçu de la page PDF. *Vérifié en navigateur sur un vrai PDF servi par l'API (pdf.js « legacy », worker local) ; aucune capture sur un vrai 10-K.*
 - [x] **L4.6** Boutons Stop (annulation côté serveur), Régénérer, Copier ; feedback persisté. *Vérifié en navigateur : arrêt (réponse partielle conservée et marquée), régénération sans doublon, avis conservé après rechargement.*
 - [x] **L4.7** Pages admin réelles (Documents, Utilisateurs) ; suppression ou masquage des pages factices. *Pages « Qualité » et « Paramètres » (données en dur) supprimées ; état du système désormais calculé (base, documents indexés, clé LLM, taux de réussite 24 h) au lieu de valeurs fixes.*
-- [ ] **L4.8** Suppression des reliquats Lovable et des composants shadcn inutilisés ; auth par cookie httpOnly.
+- [x] **L4.8** Suppression des reliquats Lovable et des composants shadcn inutilisés ; auth par cookie httpOnly. *Jeton jamais stocké côté navigateur (plus de `localStorage`), refresh à rotation, contrôle CSRF.*
 
 ### Lot 5 — Mise en production
 
