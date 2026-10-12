@@ -18,8 +18,8 @@ except ImportError as e:
     print("❌ ERREUR: Dépendances manquantes!")
     print(f"   Module manquant: {e.name}")
     print(f"   Python actuel: {sys.executable}")
-    print(f"\n   Solution: pip install -r requirement.txt")
-    print(f"   Ou activez l'environnement virtuel: .\\venv\\Scripts\\Activate.ps1")
+    print("\n   Solution: uv sync")
+    print("   (ou activez l environnement virtuel : .venv)")
     sys.exit(1)
 
 if __name__ == "__main__":
