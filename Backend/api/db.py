@@ -1,7 +1,6 @@
 import os
 import sqlite3
 from pathlib import Path
-from typing import Optional
 
 # Chemin par défaut: Backend/data/rag.db
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -89,7 +88,9 @@ def init_db() -> None:
 
     cur.execute("CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_email)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_rag_requests_created_at ON rag_requests(created_at)")
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_rag_requests_created_at ON rag_requests(created_at)"
+    )
     cur.execute("CREATE INDEX IF NOT EXISTS idx_rag_requests_status ON rag_requests(status)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_rag_requests_user ON rag_requests(user_email)")
 

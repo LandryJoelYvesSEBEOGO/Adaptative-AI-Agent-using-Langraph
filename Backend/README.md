@@ -5,20 +5,20 @@ API FastAPI exposant le pipeline RAG (LangGraph), l'authentification, l'historiq
 ## Installation
 
 ```bash
-python -m venv venv
-# Windows : .\venv\Scripts\Activate.ps1   —   Linux/macOS : source venv/bin/activate
-pip install -r requirement.txt
+uv sync                # crée .venv et installe les dépendances figées (uv.lock)
 cp .env.example .env
 ```
+
+Qualité du code : `uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest`.
 
 Renseigner au minimum `GROQ_API_KEY`, `TAVILY_API_KEY` et `JWT_SECRET_KEY` dans `.env` (voir `.env.example`).
 
 ## Lancement
 
 ```bash
-python run_api.py
+uv run python run_api.py
 # ou
-uvicorn api.main:app --reload --port 8000
+uv run uvicorn api.main:app --reload --port 8000
 ```
 
 | URL | Rôle |

@@ -1,7 +1,7 @@
 import json
 import uuid
-from datetime import datetime, date
-from typing import Dict, List, Optional, Tuple
+from datetime import date, datetime
+from typing import Dict, List, Optional
 
 from api.db import get_connection
 
@@ -112,9 +112,7 @@ def get_metrics_overview() -> Dict:
     conn.close()
 
     success_rate = (
-        ((total_requests - total_errors) / total_requests) * 100
-        if total_requests > 0
-        else 0.0
+        ((total_requests - total_errors) / total_requests) * 100 if total_requests > 0 else 0.0
     )
 
     return {
@@ -350,12 +348,10 @@ def get_system_status() -> Dict:
         "llm_status": "Operational",
         "uptime_percentage": 98.5,
     }
-import json
-import uuid
-from datetime import datetime, date
-from typing import Dict, List, Optional, Tuple
 
-from api.db import get_connection
+
+from datetime import date
+from typing import Dict, List, Optional
 
 ISO = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -464,9 +460,7 @@ def get_metrics_overview() -> Dict:
     conn.close()
 
     success_rate = (
-        ((total_requests - total_errors) / total_requests) * 100
-        if total_requests > 0
-        else 0.0
+        ((total_requests - total_errors) / total_requests) * 100 if total_requests > 0 else 0.0
     )
 
     return {

@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List
 from datetime import datetime
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException
 
 from api.dependencies import get_current_user
 from api.models.conversation import (
@@ -10,10 +11,10 @@ from api.models.conversation import (
     MessageOut,
 )
 from api.services.conversation_service import (
-    create_conversation,
-    list_conversations,
-    get_conversation,
     add_message,
+    create_conversation,
+    get_conversation,
+    list_conversations,
     list_messages,
 )
 

@@ -1,16 +1,18 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+
 from api.dependencies import get_current_user
 from api.models.chat import ChatQueryRequest, ChatQueryResponse, FeedbackRequest
 from api.services.chat_service import process_rag_query, process_rag_query_stream
 from api.services.conversation_service import (
-    create_conversation,
-    add_message,
-    get_conversation,
     add_feedback,
+    add_message,
+    create_conversation,
+    get_conversation,
 )
 from api.services.metrics_service import record_request
-import json
 
 router = APIRouter(
     prefix="/api/v1/chat",
@@ -42,21 +44,18 @@ async def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_
         conversation_id=conversation_id,
         role="user",
         content=request.question.strip(),
-        citations=None
+        citations=None,
     )
 
     # 3) exécuter RAG
-    result = process_rag_query(
-        question=request.question,
-        conversation_id=conversation_id
-    )
+    result = process_rag_query(question=request.question, conversation_id=conversation_id)
 
     # 4) sauver message assistant
     add_message(
         conversation_id=conversation_id,
         role="assistant",
         content=result.get("response", ""),
-        citations=result.get("citations", [])
+        citations=result.get("citations", []),
     )
 
     record_request(
@@ -74,8 +73,11 @@ async def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_
 
     return ChatQueryResponse(**result)
 
+
 @router.post("/query/stream")
-async def query_rag_stream(request: ChatQueryRequest, current_user: dict = Depends(get_current_user)):
+async def query_rag_stream(
+    request: ChatQueryRequest, current_user: dict = Depends(get_current_user)
+):
     if not request.question or not request.question.strip():
         raise HTTPException(status_code=400, detail="La question ne peut pas être vide")
 
@@ -105,9 +107,7 @@ async def query_rag_stream(request: ChatQueryRequest, current_user: dict = Depen
             )
 
         for chunk in process_rag_query_stream(
-            question=request.question,
-            conversation_id=conversation_id,
-            on_complete=on_complete
+            question=request.question, conversation_id=conversation_id, on_complete=on_complete
         ):
             full_response_chunks.append(chunk)
             yield f"data: {json.dumps({'chunk': chunk})}\n\n"
@@ -118,7 +118,7 @@ async def query_rag_stream(request: ChatQueryRequest, current_user: dict = Depen
             conversation_id=conversation_id,
             role="assistant",
             content=full_response,
-            citations=citations_holder["items"]
+            citations=citations_holder["items"],
         )
 
         # 4) envoyer les citations structurées au frontend
@@ -132,9 +132,10 @@ async def query_rag_stream(request: ChatQueryRequest, current_user: dict = Depen
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+            "X-Accel-Buffering": "no",
+        },
     )
+
 
 @router.post("/feedback")
 async def submit_feedback(request: FeedbackRequest, current_user: dict = Depends(get_current_user)):

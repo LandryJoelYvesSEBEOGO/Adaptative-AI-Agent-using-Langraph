@@ -1,7 +1,7 @@
 import json
 import uuid
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from api.db import get_connection
 
@@ -143,7 +143,6 @@ def list_messages(conversation_id: str) -> List[Dict]:
             }
         )
     return messages
-
 
 
 def add_feedback(

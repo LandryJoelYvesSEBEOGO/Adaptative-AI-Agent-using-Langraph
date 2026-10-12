@@ -102,6 +102,8 @@ def test_feedback_requires_auth_and_ownership(client):
         == 404
     )
     assert (
-        client.post("/api/v1/chat/feedback", json=payload, headers=_auth(alice["token"])).status_code
+        client.post(
+            "/api/v1/chat/feedback", json=payload, headers=_auth(alice["token"])
+        ).status_code
         == 200
     )
