@@ -23,6 +23,7 @@ class SlowStreamingLLM(BaseChatModel):
     reply: str = "Capex was 1577 million [1]."
     delay: float = 0.15
     calls: list = []
+    stats: dict = {"emitted": 0, "cancelled": False}
 
     @property
     def _llm_type(self) -> str:
@@ -36,9 +37,14 @@ class SlowStreamingLLM(BaseChatModel):
         self, messages: list[BaseMessage], stop=None, run_manager=None, **kwargs
     ) -> AsyncIterator[ChatGenerationChunk]:
         self.calls.append(messages)
-        for word in self.reply.split(" "):
-            await asyncio.sleep(self.delay)
-            yield ChatGenerationChunk(message=AIMessageChunk(content=word + " "))
+        try:
+            for word in self.reply.split(" "):
+                await asyncio.sleep(self.delay)
+                self.stats["emitted"] += 1
+                yield ChatGenerationChunk(message=AIMessageChunk(content=word + " "))
+        except (asyncio.CancelledError, GeneratorExit):
+            self.stats["cancelled"] = True  # l'annulation doit atteindre l'appel LLM
+            raise
 
 
 def retrieved(i: int, company="3M", year=2018, page=60) -> Retrieved:

@@ -1,5 +1,6 @@
 """L3.4 / L3.5 / L3.6 : pipeline simplifié, streaming réel, sorties structurées."""
 
+import asyncio
 import time
 
 import pytest
@@ -178,3 +179,23 @@ async def test_filters_are_relaxed_when_they_match_nothing():
     out = await run_rag("3M capex 2018", deps=deps)
     assert isinstance(calls[0], Filters) and calls[1] is None
     assert out.num_documents == 1
+
+
+async def test_cancel_event_stops_generation_and_closes_the_provider_stream():
+    llm = SlowStreamingLLM(
+        calls=[],
+        delay=0.1,
+        reply="w1 w2 w3 w4 w5 w6 w7 w8 w9 w10",
+        stats={"emitted": 0, "cancelled": False},
+    )
+    cancel = asyncio.Event()
+    tokens = []
+    async for event in stream_rag("3M capex?", deps=make_deps(llm), cancel_event=cancel):
+        if event["type"] == "token":
+            tokens.append(event["text"])
+            if len(tokens) == 3:
+                cancel.set()  # Stop
+        else:
+            output = event["output"]
+    assert llm.stats["cancelled"], "le flux du fournisseur doit être fermé"
+    assert llm.stats["emitted"] < 10 and len(output.answer.split()) < 10

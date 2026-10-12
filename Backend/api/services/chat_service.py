@@ -96,7 +96,9 @@ async def answer(question: str, conversation_id: Optional[str] = None) -> Dict[s
 
 
 async def answer_stream(
-    question: str, conversation_id: Optional[str] = None
+    question: str,
+    conversation_id: Optional[str] = None,
+    cancel_event: Optional[asyncio.Event] = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     """Événements `{"type": "token", "text": …}` puis `{"type": "done", "result": {…}}`.
 
@@ -105,7 +107,7 @@ async def answer_stream(
     started = time.perf_counter()
     try:
         history = await asyncio.to_thread(build_conversation_history, conversation_id, question)
-        async for event in pipeline.stream_rag(question, history):
+        async for event in pipeline.stream_rag(question, history, cancel_event=cancel_event):
             if event["type"] == "token":
                 yield event
             else:

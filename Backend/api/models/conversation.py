@@ -27,4 +27,5 @@ class MessageOut(BaseModel):
     role: Literal["user", "assistant", "system"]
     content: str
     citations: Optional[List[Dict]] = None
+    stopped: bool = False
     created_at: datetime

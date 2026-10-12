@@ -23,6 +23,7 @@ def _msg_dict(msg: Message) -> Dict:
         "role": msg.role,
         "content": msg.content,
         "citations": msg.citations or None,
+        "stopped": bool(msg.stopped),
         "created_at": msg.created_at,
     }
 
@@ -61,6 +62,7 @@ def add_message(
     role: str,
     content: str,
     citations: Optional[List[Dict]] = None,
+    stopped: bool = False,
 ) -> Dict:
     with session_scope() as db:
         msg = Message(
@@ -68,6 +70,7 @@ def add_message(
             role=role,
             content=content,
             citations=citations if citations is not None else None,
+            stopped=stopped,
         )
         db.add(msg)
         conv = db.get(Conversation, conversation_id)
@@ -123,3 +126,24 @@ def add_feedback(
                 )
             )
         return True
+
+
+def prepare_regeneration(conversation_id: str) -> Optional[str]:
+    """Retire la dernière réponse de l'assistant et retourne la question à reposer.
+
+    Retourne None s'il n'y a pas de question utilisateur à régénérer."""
+    with session_scope() as db:
+        messages = list(
+            db.scalars(
+                select(Message)
+                .where(Message.conversation_id == conversation_id)
+                .order_by(Message.created_at.desc())
+                .limit(2)
+            )
+        )
+        if messages and messages[0].role == "assistant":
+            db.delete(messages[0])  # le feedback associé part en cascade
+            messages = messages[1:]
+        if not messages or messages[0].role != "user":
+            return None
+        return messages[0].content

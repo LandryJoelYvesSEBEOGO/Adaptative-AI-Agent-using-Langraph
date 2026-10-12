@@ -4,8 +4,10 @@ from pydantic import BaseModel, Field
 
 
 class ChatQueryRequest(BaseModel):
-    question: str = Field(..., max_length=2000)
+    question: str = Field("", max_length=2000)
     conversation_id: Optional[str] = None  # Pour maintenir le contexte
+    regenerate: bool = False  # repose la dernière question de la conversation, sans la dupliquer
+    regenerate: bool = False  # repose la dernière question de la conversation (sans la dupliquer)
 
 
 class Citation(BaseModel):

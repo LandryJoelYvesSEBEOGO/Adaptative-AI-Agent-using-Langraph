@@ -8,13 +8,15 @@ Appels LLM dans le cas nominal : 1 (génération) ; 2 si la question dépend de 
 
 import asyncio
 import time
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from contextlib import aclosing
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any, Required, TypedDict
+from typing import Any, Required, TypedDict, cast
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from pydantic import SecretStr
 
@@ -129,7 +131,7 @@ def build_graph(deps: Dependencies):
             "latencies": _timed(state, "web_search", started),
         }
 
-    async def generate(state: RAGState) -> dict[str, Any]:
+    async def generate(state: RAGState, config: RunnableConfig) -> dict[str, Any]:
         started = time.perf_counter()
         documents = state.get("documents", [])
         if not documents:
@@ -140,9 +142,18 @@ def build_graph(deps: Dependencies):
                 content=build_user_prompt(state.get("standalone") or state["question"], documents)
             ),
         ]
-        response = await deps.llm.ainvoke(messages)
+        cancel = (config.get("configurable") or {}).get("cancel_event")
+        parts: list[str] = []
+        # `aclosing` ferme le flux du fournisseur dès qu'on s'arrête (Stop) : la génération cesse
+        # côté API au lieu d'aller jusqu'au bout.
+        stream = cast("AsyncGenerator[Any, None]", deps.llm.astream(messages, config=config))
+        async with aclosing(stream):
+            async for chunk in stream:
+                parts.append(chunk.content if isinstance(chunk.content, str) else "")
+                if cancel is not None and cancel.is_set():
+                    break
         return {
-            "answer": str(response.content),
+            "answer": "".join(parts),
             "llm_calls": state.get("llm_calls", 0) + 1,
             "latencies": _timed(state, "generation", started),
         }
@@ -218,12 +229,18 @@ class RagOutput:
 
 
 async def stream_rag(
-    question: str, history: str = "", deps: Dependencies | None = None
+    question: str,
+    history: str = "",
+    deps: Dependencies | None = None,
+    cancel_event: asyncio.Event | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Exécute le pipeline et émet des événements :
 
     {"type": "token", "text": …} pour chaque fragment de la réponse, puis
     {"type": "done", "output": RagOutput}.
+
+    `cancel_event` (optionnel) : une fois positionné, la génération s'arrête au prochain
+    fragment et le flux ferme la connexion au fournisseur LLM.
     """
     graph = _graph_for(deps or get_dependencies())
     started = time.perf_counter()
@@ -231,6 +248,7 @@ async def stream_rag(
     streamed = False
     async for mode, data in graph.astream(
         {"question": question, "history": history, "llm_calls": 0, "latencies": {}},
+        config={"configurable": {"cancel_event": cancel_event}},
         stream_mode=["messages", "values"],
     ):
         if mode == "messages":
