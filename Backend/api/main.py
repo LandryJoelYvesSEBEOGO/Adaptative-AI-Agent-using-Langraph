@@ -1,15 +1,19 @@
+# isort: off
 # Patch bcrypt pour passlib - DOIT être importé en premier
+from api.services.bcrypt_patch import *  # noqa: F401, F403
+
+# isort: on
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from api.db import init_db
+from api.database import run_migrations
 from api.middleware import log_requests, setup_cors
-
-# Import des routers
 from api.routes import admin, auth, chat, conversation
-from api.services.bcrypt_patch import *  # noqa: F401, F403
+from api.services.auth_service import seed_initial_users
+from config.settings import get_settings
 
 # Configuration du logging avec format amélioré
 logging.basicConfig(
@@ -20,8 +24,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    if get_settings().AUTO_MIGRATE:
+        run_migrations()
+    seed_initial_users()
+    yield
+
+
 # Créer l'application FastAPI
 app = FastAPI(
+    lifespan=lifespan,
     title="RAG System API",
     description="API pour le système RAG avec frontend React",
     version="1.0.0",
@@ -31,9 +44,6 @@ app = FastAPI(
 
 # Configurer CORS EN PREMIER - doit être avant tout autre middleware
 setup_cors(app)
-
-# Initialiser la base
-init_db()
 
 
 # Handler global pour les erreurs

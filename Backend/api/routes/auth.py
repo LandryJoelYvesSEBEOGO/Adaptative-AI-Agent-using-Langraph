@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(request: LoginRequest):
+def login(request: LoginRequest):
     """
     Authentifie un utilisateur et retourne un token JWT.
     """
@@ -30,9 +30,7 @@ async def login(request: LoginRequest):
 
     # Créer le token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user["email"], "role": user["role"]}, expires_delta=access_token_expires
-    )
+    access_token = create_access_token(data={"sub": user["id"]}, expires_delta=access_token_expires)
 
     return LoginResponse(
         success=True,
@@ -42,7 +40,7 @@ async def login(request: LoginRequest):
 
 
 @router.post("/register", response_model=RegisterResponse)
-async def register(request: RegisterRequest):
+def register(request: RegisterRequest):
     """
     Crée un nouvel utilisateur et retourne un token JWT.
     """
@@ -59,9 +57,7 @@ async def register(request: RegisterRequest):
 
     # Créer le token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user["email"], "role": user["role"]}, expires_delta=access_token_expires
-    )
+    access_token = create_access_token(data={"sub": user["id"]}, expires_delta=access_token_expires)
 
     return RegisterResponse(
         success=True,

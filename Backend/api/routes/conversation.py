@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -26,27 +25,16 @@ async def create_new_conversation(
     payload: ConversationCreate,
     current_user: dict = Depends(get_current_user),
 ):
-    conv = create_conversation(current_user["email"], payload.title)
-    return {
-        **conv,
-        "created_at": datetime.fromisoformat(conv["created_at"].replace("Z", "+00:00")),
-        "updated_at": datetime.fromisoformat(conv["updated_at"].replace("Z", "+00:00")),
-    }
+    conv = create_conversation(current_user["id"], payload.title)
+    return conv
 
 
 @router.get("/conversations", response_model=List[ConversationOut])
 async def get_conversations(
     current_user: dict = Depends(get_current_user),
 ):
-    rows = list_conversations(current_user["email"])
-    return [
-        {
-            **c,
-            "created_at": datetime.fromisoformat(c["created_at"].replace("Z", "+00:00")),
-            "updated_at": datetime.fromisoformat(c["updated_at"].replace("Z", "+00:00")),
-        }
-        for c in rows
-    ]
+    rows = list_conversations(current_user["id"])
+    return rows
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=List[MessageOut])
@@ -54,18 +42,12 @@ async def get_messages(
     conversation_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    conv = get_conversation(conversation_id, current_user["email"])
+    conv = get_conversation(conversation_id, current_user["id"])
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation introuvable")
 
     msgs = list_messages(conversation_id)
-    return [
-        {
-            **m,
-            "created_at": datetime.fromisoformat(m["created_at"].replace("Z", "+00:00")),
-        }
-        for m in msgs
-    ]
+    return msgs
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=MessageOut)
@@ -74,7 +56,7 @@ async def add_message_to_conversation(
     payload: MessageCreate,
     current_user: dict = Depends(get_current_user),
 ):
-    conv = get_conversation(conversation_id, current_user["email"])
+    conv = get_conversation(conversation_id, current_user["id"])
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation introuvable")
 
@@ -84,7 +66,4 @@ async def add_message_to_conversation(
         content=payload.content,
         citations=payload.citations,
     )
-    return {
-        **msg,
-        "created_at": datetime.fromisoformat(msg["created_at"].replace("Z", "+00:00")),
-    }
+    return msg

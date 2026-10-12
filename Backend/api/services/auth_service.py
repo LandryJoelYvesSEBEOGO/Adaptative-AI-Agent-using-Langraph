@@ -1,15 +1,22 @@
-# Patch pour bcrypt avant l'import de passlib
+# isort: off
+# Le patch bcrypt DOIT être importé avant passlib.
+from api.services.bcrypt_patch import *  # noqa: F401, F403
+
+# isort: on
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import select
 
-from api.services.bcrypt_patch import *  # noqa: F401, F403
+from api.database import session_scope
+from api.db_models import User
+from config.settings import get_settings
 
 # Configuration
-SECRET_KEY: str = os.getenv("JWT_SECRET_KEY") or ""
+SECRET_KEY: str = get_settings().JWT_SECRET_KEY
 if len(SECRET_KEY) < 32:
     raise RuntimeError(
         "JWT_SECRET_KEY doit être défini (32 caractères minimum). "
@@ -20,28 +27,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 heures
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# Base de données utilisateurs (à remplacer par une vraie DB)
-# Aucun compte par défaut : les comptes initiaux sont créés depuis l'environnement.
-MOCK_USERS = []
 
-
-def _seed_user(prefix: str, name: str, role: str) -> None:
-    email = os.getenv(f"{prefix}_EMAIL")
-    password = os.getenv(f"{prefix}_PASSWORD")
-    if email and password:
-        MOCK_USERS.append(
-            {
-                "id": str(len(MOCK_USERS) + 1),
-                "email": email.lower(),
-                "hashed_password": pwd_context.hash(password),
-                "name": name,
-                "role": role,
-            }
-        )
-
-
-_seed_user("ADMIN", "Admin User", "admin")
-_seed_user("DEFAULT_USER", "Standard User", "user")
+def _to_dict(user: User) -> dict:
+    """Représentation publique d'un utilisateur (sans le hash du mot de passe)."""
+    return {"id": user.id, "email": user.email, "name": user.name, "role": user.role}
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -50,73 +39,73 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_user_by_email(email: str) -> Optional[dict]:
-    """Récupère un utilisateur par email."""
-    for user in MOCK_USERS:
-        if user["email"].lower() == email.lower():
-            return user
-    return None
+    """Récupère un utilisateur par email (hash inclus, usage interne)."""
+    with session_scope() as db:
+        user = db.scalar(select(User).where(User.email == email.lower()))
+        if user is None:
+            return None
+        return {**_to_dict(user), "hashed_password": user.hashed_password}
+
+
+def get_user_by_id(user_id: str) -> Optional[dict]:
+    """Récupère un utilisateur par identifiant (sans le hash)."""
+    with session_scope() as db:
+        user = db.get(User, user_id)
+        return _to_dict(user) if user else None
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Crée un token JWT."""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(UTC) + timedelta(minutes=15)
 
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def authenticate_user(email: str, password: str) -> Optional[dict]:
     """Authentifie un utilisateur."""
     user = get_user_by_email(email)
-    if not user:
+    if not user or not verify_password(password, user["hashed_password"]):
         return None
-
-    if not verify_password(password, user["hashed_password"]):
-        return None
-
-    # Retourner l'utilisateur sans le hash
-    user_without_password = {k: v for k, v in user.items() if k != "hashed_password"}
-    return user_without_password
+    return {k: v for k, v in user.items() if k != "hashed_password"}
 
 
 def verify_token(token: str) -> Optional[dict]:
     """Vérifie et décode un token JWT."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
         return None
 
 
 def create_user(email: str, password: str, name: str, role: str = "user") -> Optional[dict]:
-    """Crée un nouvel utilisateur."""
-    # Vérifier si l'utilisateur existe déjà
-    if get_user_by_email(email):
-        return None
+    """Crée un utilisateur ; retourne None si l'email est déjà pris."""
+    email = email.lower()
+    with session_scope() as db:
+        if db.scalar(select(User).where(User.email == email)):
+            return None
+        user = User(
+            email=email,
+            hashed_password=pwd_context.hash(password),
+            name=name,
+            role=role if role in ("admin", "user") else "user",
+        )
+        db.add(user)
+        db.flush()
+        return _to_dict(user)
 
-    # Générer un nouvel ID
-    new_id = str(len(MOCK_USERS) + 1)
 
-    # Hasher le mot de passe
-    hashed_password = pwd_context.hash(password)
-
-    # Créer le nouvel utilisateur
-    new_user = {
-        "id": new_id,
-        "email": email.lower(),
-        "hashed_password": hashed_password,
-        "name": name,
-        "role": role if role in ["admin", "user"] else "user",
-    }
-
-    # Ajouter à la liste (dans une vraie app, on sauvegarderait en DB)
-    MOCK_USERS.append(new_user)
-
-    # Retourner l'utilisateur sans le hash
-    user_without_password = {k: v for k, v in new_user.items() if k != "hashed_password"}
-    return user_without_password
+def seed_initial_users() -> None:
+    """Crée les comptes initiaux décrits par l'environnement (ADMIN_*, DEFAULT_USER_*)."""
+    for prefix, name, role in (
+        ("ADMIN", "Admin User", "admin"),
+        ("DEFAULT_USER", "Standard User", "user"),
+    ):
+        email = os.getenv(f"{prefix}_EMAIL")
+        password = os.getenv(f"{prefix}_PASSWORD")
+        if email and password and not get_user_by_email(email):
+            create_user(email, password, name, role)

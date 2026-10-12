@@ -34,7 +34,7 @@ uv run uvicorn api.main:app --reload --port 8000
 | `api/routes/` | Endpoints : `auth`, `chat` (requête, streaming SSE, feedback), `conversation`, `admin` |
 | `api/services/` | Logique métier appelée par les routes |
 | `api/models/` | Schémas Pydantic des requêtes et réponses |
-| `api/db.py` | Accès SQLite (conversations, messages, requêtes RAG) |
+| `api/database.py`, `api/db_models.py`, `alembic/` | SQLAlchemy 2 (PostgreSQL ou SQLite) et migrations Alembic |
 | `config/Config.py` | Paramètres du pipeline (modèles, reranker, hybrid search, grading…) |
 | `src/rag/` | Ingestion des documents, prompts, graphe LangGraph |
 | `src/core/` | Logs, métriques, retry / circuit breaker, fallback, rotation des clés Groq |

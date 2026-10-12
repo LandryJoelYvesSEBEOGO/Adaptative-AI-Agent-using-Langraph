@@ -1,34 +1,28 @@
-import json
-import uuid
-from datetime import date, datetime
+from datetime import UTC, datetime
 from typing import Dict, List, Optional
 
-from api.db import get_connection
+from sqlalchemy import case, func, select
 
-ISO = "%Y-%m-%dT%H:%M:%S.%fZ"
-
-
-def _now() -> str:
-    return datetime.utcnow().strftime(ISO)
-
-
-def _parse_date(date_str: str) -> date:
-    return datetime.fromisoformat(date_str.replace("Z", "+00:00")).date()
+from api.database import session_scope
+from api.db_models import RagRequest, User
 
 
 def _percentile(values: List[float], pct: float) -> float:
     if not values:
         return 0.0
     sorted_values = sorted(values)
-    index = int(len(sorted_values) * pct)
-    if index >= len(sorted_values):
-        index = len(sorted_values) - 1
+    index = min(int(len(sorted_values) * pct), len(sorted_values) - 1)
     return float(sorted_values[index])
 
 
+def _day(column):
+    """Jour (AAAA-MM-JJ) d'un horodatage, portable SQLite / PostgreSQL."""
+    return func.date(column)
+
+
 def record_request(
-    conversation_id: str,
-    user_email: Optional[str],
+    conversation_id: Optional[str],
+    user_id: Optional[str],
     question: str,
     status: str,
     error: Optional[str],
@@ -39,266 +33,178 @@ def record_request(
     answer_quality_scores: Optional[Dict],
 ) -> None:
     latencies = latencies or {}
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO rag_requests (
-            id,
-            conversation_id,
-            user_email,
-            question,
-            status,
-            error,
-            latency_end_to_end,
-            latency_retrieval,
-            latency_generation,
-            latency_grading,
-            latency_web_search,
-            latency_reranking,
-            latency_answer_quality,
-            docs_count,
-            response_length,
-            answer_quality_score,
-            answer_quality_scores,
-            created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            str(uuid.uuid4()),
-            conversation_id,
-            user_email,
-            question,
-            status,
-            error,
-            latencies.get("end_to_end"),
-            latencies.get("retrieval"),
-            latencies.get("generation"),
-            latencies.get("grading"),
-            latencies.get("web_search"),
-            latencies.get("reranking"),
-            latencies.get("answer_quality"),
-            docs_count,
-            response_length,
-            answer_quality_score,
-            json.dumps(answer_quality_scores) if answer_quality_scores else None,
-            _now(),
-        ),
-    )
-    conn.commit()
-    conn.close()
+    with session_scope() as db:
+        db.add(
+            RagRequest(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                question=question,
+                status=status,
+                error=error,
+                latency_end_to_end=latencies.get("end_to_end"),
+                latency_retrieval=latencies.get("retrieval"),
+                latency_generation=latencies.get("generation"),
+                latency_grading=latencies.get("grading"),
+                latency_web_search=latencies.get("web_search"),
+                latency_reranking=latencies.get("reranking"),
+                latency_answer_quality=latencies.get("answer_quality"),
+                docs_count=docs_count,
+                response_length=response_length,
+                answer_quality_score=answer_quality_score,
+                answer_quality_scores=answer_quality_scores or None,
+            )
+        )
 
 
 def get_metrics_overview() -> Dict:
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT COUNT(*) AS total FROM rag_requests")
-    total_requests = cur.fetchone()["total"] or 0
-
-    cur.execute("SELECT COUNT(*) AS total FROM rag_requests WHERE status = 'error'")
-    total_errors = cur.fetchone()["total"] or 0
-
-    cur.execute("SELECT AVG(latency_end_to_end) AS avg_latency FROM rag_requests")
-    avg_latency = cur.fetchone()["avg_latency"] or 0.0
-
-    today = datetime.utcnow().date().isoformat()
-    cur.execute(
-        "SELECT COUNT(*) AS total FROM rag_requests WHERE substr(created_at, 1, 10) = ?",
-        (today,),
-    )
-    requests_today = cur.fetchone()["total"] or 0
-
-    conn.close()
+    today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    with session_scope() as db:
+        total_requests, total_errors, avg_latency = db.execute(
+            select(
+                func.count(RagRequest.id),
+                func.coalesce(func.sum(case((RagRequest.status == "error", 1), else_=0)), 0),
+                func.avg(RagRequest.latency_end_to_end),
+            )
+        ).one()
+        requests_today = db.scalar(
+            select(func.count(RagRequest.id)).where(RagRequest.created_at >= today_start)
+        )
 
     success_rate = (
         ((total_requests - total_errors) / total_requests) * 100 if total_requests > 0 else 0.0
     )
-
     return {
         "total_requests": total_requests,
-        "requests_today": requests_today,
+        "requests_today": requests_today or 0,
         "success_rate": success_rate,
-        "average_latency": avg_latency,
-        "error_count": total_errors,
+        "average_latency": float(avg_latency or 0.0),
+        "error_count": int(total_errors),
     }
+
+
+def _format_day(day) -> str:
+    if isinstance(day, str):
+        day = datetime.fromisoformat(day)
+    return day.strftime("%d %b")
 
 
 def get_requests_chart_data(days: int = 7) -> List[Dict]:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT
-            substr(created_at, 1, 10) AS date,
-            COUNT(*) AS requests,
-            SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success,
-            SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS errors
-        FROM rag_requests
-        GROUP BY substr(created_at, 1, 10)
-        ORDER BY date DESC
-        LIMIT ?
-        """,
-        (days,),
-    )
-    rows = cur.fetchall()
-    conn.close()
+    day = _day(RagRequest.created_at)
+    with session_scope() as db:
+        rows = db.execute(
+            select(
+                day.label("day"),
+                func.count(RagRequest.id),
+                func.sum(case((RagRequest.status == "success", 1), else_=0)),
+                func.sum(case((RagRequest.status == "error", 1), else_=0)),
+            )
+            .group_by(day)
+            .order_by(day.desc())
+            .limit(days)
+        ).all()
 
-    result = []
-    for row in rows[::-1]:
-        date_obj = datetime.fromisoformat(row["date"])
-        result.append(
-            {
-                "date": date_obj.strftime("%d %b"),
-                "requests": row["requests"],
-                "success": row["success"],
-                "errors": row["errors"],
-            }
-        )
+    return [
+        {
+            "date": _format_day(d),
+            "requests": requests,
+            "success": int(success or 0),
+            "errors": int(errors or 0),
+        }
+        for d, requests, success, errors in reversed(rows)
+    ]
 
-    return result
+
+_ERROR_BUCKETS = (
+    ("timeout", ("timeout",)),
+    ("llm_error", ("llm", "generation")),
+    ("retrieval", ("retrieval", "retrieve")),
+    ("web_search", ("web", "search")),
+)
 
 
 def get_error_distribution() -> Dict:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT error FROM rag_requests WHERE status = 'error' AND error IS NOT NULL")
-    rows = cur.fetchall()
-    conn.close()
+    distribution = {"timeout": 0, "llm_error": 0, "retrieval": 0, "web_search": 0, "other": 0}
+    with session_scope() as db:
+        errors = db.scalars(
+            select(RagRequest.error).where(
+                RagRequest.status == "error", RagRequest.error.is_not(None)
+            )
+        ).all()
 
-    distribution = {
-        "timeout": 0,
-        "llm_error": 0,
-        "retrieval": 0,
-        "web_search": 0,
-        "other": 0,
-    }
-
-    for row in rows:
-        error = (row["error"] or "").lower()
-        if "timeout" in error:
-            distribution["timeout"] += 1
-        elif "llm" in error or "generation" in error:
-            distribution["llm_error"] += 1
-        elif "retrieval" in error or "retrieve" in error:
-            distribution["retrieval"] += 1
-        elif "web" in error or "search" in error:
-            distribution["web_search"] += 1
+    for raw in errors:
+        error = (raw or "").lower()
+        for bucket, keywords in _ERROR_BUCKETS:
+            if any(k in error for k in keywords):
+                distribution[bucket] += 1
+                break
         else:
             distribution["other"] += 1
-
     return distribution
 
 
-def get_recent_requests(limit: int = 10) -> List[Dict]:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id, created_at, user_email, question, status, latency_end_to_end
-        FROM rag_requests
-        ORDER BY created_at DESC
-        LIMIT ?
-        """,
-        (limit,),
-    )
-    rows = cur.fetchall()
-    conn.close()
+def _recent_rows(limit: int):
+    with session_scope() as db:
+        return db.execute(
+            select(RagRequest, User.email)
+            .outerjoin(User, User.id == RagRequest.user_id)
+            .order_by(RagRequest.created_at.desc())
+            .limit(limit)
+        ).all()
 
+
+def get_recent_requests(limit: int = 10) -> List[Dict]:
     formatted = []
-    for row in rows:
-        question = row["question"] or ""
+    for req, email in _recent_rows(limit):
+        question = req.question or ""
         formatted.append(
             {
-                "id": row["id"],
-                "timestamp": row["created_at"],
-                "user": row["user_email"] or "unknown",
+                "id": req.id,
+                "timestamp": req.created_at.isoformat(),
+                "user": email or "unknown",
                 "question": question[:50] + "..." if len(question) > 50 else question,
-                "status": row["status"],
-                "latency": row["latency_end_to_end"] or 0.0,
+                "status": req.status,
+                "latency": req.latency_end_to_end or 0.0,
             }
         )
-
     return formatted
 
 
 def get_request_details(limit: int = 50) -> List[Dict]:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id, created_at, user_email, question, status, latency_end_to_end, docs_count, answer_quality_score
-        FROM rag_requests
-        ORDER BY created_at DESC
-        LIMIT ?
-        """,
-        (limit,),
-    )
-    rows = cur.fetchall()
-    conn.close()
-
-    result = []
-    for row in rows:
-        result.append(
-            {
-                "id": row["id"],
-                "timestamp": row["created_at"],
-                "user": row["user_email"] or "unknown",
-                "question": row["question"],
-                "status": row["status"],
-                "latency": row["latency_end_to_end"] or 0.0,
-                "docs_count": row["docs_count"] or 0,
-                "quality": row["answer_quality_score"] or 0.0,
-            }
-        )
-    return result
+    return [
+        {
+            "id": req.id,
+            "timestamp": req.created_at.isoformat(),
+            "user": email or "unknown",
+            "question": req.question,
+            "status": req.status,
+            "latency": req.latency_end_to_end or 0.0,
+            "docs_count": req.docs_count or 0,
+            "quality": req.answer_quality_score or 0.0,
+        }
+        for req, email in _recent_rows(limit)
+    ]
 
 
 def get_latency_component_stats() -> List[Dict]:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT
-            latency_end_to_end,
-            latency_retrieval,
-            latency_generation,
-            latency_grading,
-            latency_web_search
-        FROM rag_requests
-        WHERE status = 'success'
-        """
-    )
-    rows = cur.fetchall()
-    conn.close()
+    with session_scope() as db:
+        rows = db.execute(
+            select(
+                RagRequest.latency_end_to_end,
+                RagRequest.latency_retrieval,
+                RagRequest.latency_generation,
+                RagRequest.latency_grading,
+                RagRequest.latency_web_search,
+            ).where(RagRequest.status == "success")
+        ).all()
 
-    buckets = {
-        "End-to-End": [],
-        "Retrieval": [],
-        "Generation": [],
-        "Grading": [],
-        "Web Search": [],
-    }
-
-    for row in rows:
-        if row["latency_end_to_end"] is not None:
-            buckets["End-to-End"].append(row["latency_end_to_end"])
-        if row["latency_retrieval"] is not None:
-            buckets["Retrieval"].append(row["latency_retrieval"])
-        if row["latency_generation"] is not None:
-            buckets["Generation"].append(row["latency_generation"])
-        if row["latency_grading"] is not None:
-            buckets["Grading"].append(row["latency_grading"])
-        if row["latency_web_search"] is not None:
-            buckets["Web Search"].append(row["latency_web_search"])
-
+    names = ("End-to-End", "Retrieval", "Generation", "Grading", "Web Search")
     result = []
-    for name, values in buckets.items():
-        avg = sum(values) / len(values) if values else 0.0
+    for index, name in enumerate(names):
+        values = [row[index] for row in rows if row[index] is not None]
         result.append(
             {
                 "name": name,
-                "avg": avg,
+                "avg": sum(values) / len(values) if values else 0.0,
                 "p95": _percentile(values, 0.95),
                 "p99": _percentile(values, 0.99),
             }
@@ -307,38 +213,30 @@ def get_latency_component_stats() -> List[Dict]:
 
 
 def get_latency_trend(days: int = 7) -> List[Dict]:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT
-            substr(created_at, 1, 10) AS date,
-            AVG(latency_end_to_end) AS end_to_end,
-            AVG(latency_retrieval) AS retrieval,
-            AVG(latency_generation) AS generation
-        FROM rag_requests
-        WHERE status = 'success'
-        GROUP BY substr(created_at, 1, 10)
-        ORDER BY date DESC
-        LIMIT ?
-        """,
-        (days,),
-    )
-    rows = cur.fetchall()
-    conn.close()
+    day = _day(RagRequest.created_at)
+    with session_scope() as db:
+        rows = db.execute(
+            select(
+                day.label("day"),
+                func.avg(RagRequest.latency_end_to_end),
+                func.avg(RagRequest.latency_retrieval),
+                func.avg(RagRequest.latency_generation),
+            )
+            .where(RagRequest.status == "success")
+            .group_by(day)
+            .order_by(day.desc())
+            .limit(days)
+        ).all()
 
-    result = []
-    for row in rows[::-1]:
-        date_obj = datetime.fromisoformat(row["date"])
-        result.append(
-            {
-                "date": date_obj.strftime("%d %b"),
-                "endToEnd": row["end_to_end"] or 0.0,
-                "retrieval": row["retrieval"] or 0.0,
-                "generation": row["generation"] or 0.0,
-            }
-        )
-    return result
+    return [
+        {
+            "date": _format_day(d),
+            "endToEnd": float(end_to_end or 0.0),
+            "retrieval": float(retrieval or 0.0),
+            "generation": float(generation or 0.0),
+        }
+        for d, end_to_end, retrieval, generation in reversed(rows)
+    ]
 
 
 def get_system_status() -> Dict:

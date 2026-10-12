@@ -2,34 +2,34 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
-from api.services.auth_service import ALGORITHM, SECRET_KEY
+from api.services.auth_service import ALGORITHM, SECRET_KEY, get_user_by_id
 
 security = HTTPBearer()
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     """
     Dépendance pour récupérer l'utilisateur actuel depuis le token JWT.
+
+    Le rôle est relu en base à chaque requête : un compte supprimé ou rétrogradé
+    perd immédiatement ses droits, quel que soit le contenu du token.
     """
-    token = credentials.credentials
-
+    invalid = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalide ou expiré"
+    )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str | None = payload.get("sub")
-        role: str | None = payload.get("role")
-
-        if email is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalide")
-
-        return {"email": email, "role": role}
-
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalide ou expiré"
-        ) from None
+        raise invalid from None
+
+    user_id = payload.get("sub")
+    user = get_user_by_id(user_id) if user_id else None
+    if user is None:
+        raise invalid
+    return user
 
 
-async def require_admin(current_user: dict = Depends(get_current_user)):
+def require_admin(current_user: dict = Depends(get_current_user)):
     """
     Dépendance pour vérifier que l'utilisateur est admin.
     """

@@ -24,9 +24,9 @@ router = APIRouter(
 def _resolve_conversation(request: ChatQueryRequest, current_user: dict) -> str:
     """Retourne l'id de conversation, en vérifiant qu'elle appartient à l'utilisateur."""
     if not request.conversation_id:
-        conv = create_conversation(current_user["email"], title=request.question[:60])
+        conv = create_conversation(current_user["id"], title=request.question[:60])
         return conv["id"]
-    if not get_conversation(request.conversation_id, current_user["email"]):
+    if not get_conversation(request.conversation_id, current_user["id"]):
         raise HTTPException(status_code=404, detail="Conversation introuvable")
     return request.conversation_id
 
@@ -60,7 +60,7 @@ async def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_
 
     record_request(
         conversation_id=conversation_id,
-        user_email=current_user.get("email"),
+        user_id=current_user.get("id"),
         question=request.question.strip(),
         status="success" if result.get("success") else "error",
         error=result.get("error"),
@@ -95,7 +95,7 @@ async def query_rag_stream(
             citations_holder["items"] = meta.get("citations", []) or []
             record_request(
                 conversation_id=conversation_id,
-                user_email=current_user.get("email"),
+                user_id=current_user.get("id"),
                 question=request.question.strip(),
                 status="success" if meta.get("success") else "error",
                 error=meta.get("error"),
@@ -147,7 +147,7 @@ async def submit_feedback(request: FeedbackRequest, current_user: dict = Depends
 
     if not add_feedback(
         message_id=request.message_id,
-        user_email=current_user["email"],
+        user_id=current_user["id"],
         feedback_type=request.feedback_type,
         comment=request.comment,
     ):

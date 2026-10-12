@@ -315,7 +315,6 @@ def test_scoring_logic():
         return False
 
 
-
 def test_workflow_integration():
     """Test 5: Test d'intégration avec le workflow (optionnel, nécessite des documents)."""
     print_header("TEST 5: Test d'Intégration avec le Workflow (Optionnel)")

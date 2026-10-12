@@ -40,7 +40,10 @@ class Settings(BaseSettings):
     LANGCHAIN_PROJECT: str = "rag-system"
 
     # --- Base de données ---
-    RAG_DB_PATH: str = str(DATA_DIR / "rag.db")
+    # URL SQLAlchemy, ex. postgresql+psycopg://user:pass@host:5432/rag. Vide : SQLite local.
+    DATABASE_URL: str = ""
+    RAG_DB_PATH: str = str(DATA_DIR / "rag.db")  # utilisé uniquement si DATABASE_URL est vide
+    AUTO_MIGRATE: bool = True  # applique `alembic upgrade head` au démarrage de l'API
 
     # --- Modèles ---
     GROQ_model: str = "openai/gpt-oss-120b"
@@ -94,8 +97,7 @@ class Settings(BaseSettings):
     METADATA_MAX_ENTITIES: int = 10  # Nombre maximum d'entités
     METADATA_MAX_TOPICS: int = 3  # Nombre maximum de sujets
     METADATA_SUMMARY_MAX_LENGTH: int = 100  # Longueur max du résumé en mots
-        True  # Activer/désactiver l'enregistrement des résultats retrieval
-    )
+    RETRIEVAL_METRICS_ENABLED: bool = True  # Enregistrer les résultats de retrieval
     CITATIONS_ENABLED: bool = True  # Activer/désactiver les citations automatiques
     CITATION_FORMAT: str = "numeric"
     ANSWER_QUALITY_SCORING_ENABLED: bool = (
@@ -141,6 +143,10 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_to_none(cls, value):
         return value or None
+
+    @property
+    def database_url(self) -> str:
+        return self.DATABASE_URL or f"sqlite:///{self.RAG_DB_PATH}"
 
     @property
     def GROQ_API_KEYS(self) -> list[str]:

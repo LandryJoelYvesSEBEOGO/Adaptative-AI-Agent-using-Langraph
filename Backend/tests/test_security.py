@@ -29,7 +29,8 @@ from api.services.conversation_service import add_message  # noqa: E402
 
 @pytest.fixture(scope="module")
 def client():
-    return TestClient(app)
+    with TestClient(app) as c:  # déclenche le lifespan : migrations + comptes initiaux
+        yield c
 
 
 def _register(client, email, **extra):
@@ -46,17 +47,20 @@ def _auth(token):
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_missing_secret_refuses_to_start():
+def test_missing_secret_refuses_to_start(monkeypatch):
     import importlib
 
     from api.services import auth_service
+    from config.settings import get_settings
 
-    saved = os.environ.pop("JWT_SECRET_KEY")
+    monkeypatch.delenv("JWT_SECRET_KEY")
+    get_settings.cache_clear()
     try:
         with pytest.raises(RuntimeError):
             importlib.reload(auth_service)
     finally:
-        os.environ["JWT_SECRET_KEY"] = saved
+        monkeypatch.undo()
+        get_settings.cache_clear()
         importlib.reload(auth_service)
 
 

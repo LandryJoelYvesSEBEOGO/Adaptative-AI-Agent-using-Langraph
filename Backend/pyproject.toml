@@ -15,6 +15,10 @@ dependencies = [
     "python-dotenv>=1.0",
     "pydantic[email]>=2.7",
     "pydantic-settings>=2.3",
+    # Base de données
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
     # LangChain / LangGraph
     "langchain>=0.3",
     "langchain-core>=0.3",
@@ -60,6 +64,7 @@ ignore = ["E501"]  # la longueur de ligne est laissée au formateur
 "tests/*" = ["E402", "W291", "F841", "B905"]
 "api/services/chat_service.py" = ["E402"]  # supprimé au lot 2.4
 "api/main.py" = ["E402"]  # le patch bcrypt doit être importé en premier
+"alembic/versions/*" = ["E501", "I001", "W291", "W293"]
 "api/services/auth_service.py" = ["E402", "F403"]
 
 [tool.pyright]
