@@ -32,7 +32,7 @@ router = APIRouter(
 
 
 @router.get("/metrics/overview", response_model=MetricOverview)
-async def get_overview():
+def get_overview():
     """
     Retourne un aperçu des métriques du système.
     """
@@ -42,7 +42,7 @@ async def get_overview():
 
 
 @router.get("/metrics/requests", response_model=List[RequestDataPoint])
-async def get_requests_metrics(days: int = 7):
+def get_requests_metrics(days: int = 7):
     """
     Retourne les données pour le graphique des requêtes.
     """
@@ -52,7 +52,7 @@ async def get_requests_metrics(days: int = 7):
 
 
 @router.get("/metrics/recent", response_model=List[RecentRequest])
-async def get_recent_requests_endpoint(limit: int = 10):
+def get_recent_requests_endpoint(limit: int = 10):
     """
     Retourne les requêtes récentes.
     """
@@ -62,7 +62,7 @@ async def get_recent_requests_endpoint(limit: int = 10):
 
 
 @router.get("/requests", response_model=List[RequestDetail])
-async def get_requests_endpoint(limit: int = 50):
+def get_requests_endpoint(limit: int = 50):
     """
     Retourne les requêtes détaillées (admin).
     """
@@ -71,7 +71,7 @@ async def get_requests_endpoint(limit: int = 50):
 
 
 @router.get("/metrics/latency/components", response_model=List[LatencyComponentStat])
-async def get_latency_components_endpoint():
+def get_latency_components_endpoint():
     """
     Retourne les statistiques de latence par composant.
     """
@@ -80,7 +80,7 @@ async def get_latency_components_endpoint():
 
 
 @router.get("/metrics/latency/trend", response_model=List[LatencyTrendPoint])
-async def get_latency_trend_endpoint(days: int = 7):
+def get_latency_trend_endpoint(days: int = 7):
     """
     Retourne les tendances de latence.
     """
@@ -89,7 +89,7 @@ async def get_latency_trend_endpoint(days: int = 7):
 
 
 @router.get("/metrics/errors", response_model=ErrorDistribution)
-async def get_error_distribution_endpoint():
+def get_error_distribution_endpoint():
     """
     Retourne la répartition des erreurs.
     """
@@ -99,7 +99,7 @@ async def get_error_distribution_endpoint():
 
 
 @router.get("/system/status", response_model=SystemStatus)
-async def get_system_status_endpoint():
+def get_system_status_endpoint():
     """
     Retourne le statut du système.
     """

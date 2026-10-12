@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/v1/chat", tags=["conversations"])
 
 
 @router.post("/conversations", response_model=ConversationOut)
-async def create_new_conversation(
+def create_new_conversation(
     payload: ConversationCreate,
     current_user: dict = Depends(get_current_user),
 ):
@@ -30,7 +30,7 @@ async def create_new_conversation(
 
 
 @router.get("/conversations", response_model=List[ConversationOut])
-async def get_conversations(
+def get_conversations(
     current_user: dict = Depends(get_current_user),
 ):
     rows = list_conversations(current_user["id"])
@@ -38,7 +38,7 @@ async def get_conversations(
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=List[MessageOut])
-async def get_messages(
+def get_messages(
     conversation_id: str,
     current_user: dict = Depends(get_current_user),
 ):
@@ -51,7 +51,7 @@ async def get_messages(
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=MessageOut)
-async def add_message_to_conversation(
+def add_message_to_conversation(
     conversation_id: str,
     payload: MessageCreate,
     current_user: dict = Depends(get_current_user),

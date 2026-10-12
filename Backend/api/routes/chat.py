@@ -32,7 +32,7 @@ def _resolve_conversation(request: ChatQueryRequest, current_user: dict) -> str:
 
 
 @router.post("/query", response_model=ChatQueryResponse)
-async def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_current_user)):
+def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_current_user)):
     if not request.question or not request.question.strip():
         raise HTTPException(status_code=400, detail="La question ne peut pas être vide")
 
@@ -75,9 +75,7 @@ async def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_
 
 
 @router.post("/query/stream")
-async def query_rag_stream(
-    request: ChatQueryRequest, current_user: dict = Depends(get_current_user)
-):
+def query_rag_stream(request: ChatQueryRequest, current_user: dict = Depends(get_current_user)):
     if not request.question or not request.question.strip():
         raise HTTPException(status_code=400, detail="La question ne peut pas être vide")
 
@@ -138,7 +136,7 @@ async def query_rag_stream(
 
 
 @router.post("/feedback")
-async def submit_feedback(request: FeedbackRequest, current_user: dict = Depends(get_current_user)):
+def submit_feedback(request: FeedbackRequest, current_user: dict = Depends(get_current_user)):
     """
     Enregistre le feedback utilisateur (thumbs up/down).
     """
