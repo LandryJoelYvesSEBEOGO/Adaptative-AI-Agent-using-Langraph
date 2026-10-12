@@ -45,6 +45,15 @@ class Settings(BaseSettings):
     COOKIE_SECURE: bool = False  # true en production (HTTPS)
     COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
 
+    # --- Limites d'usage ---
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_AUTH_PER_MINUTE: int = 20  # connexions / inscriptions, par adresse IP
+    RATE_LIMIT_LOGIN_ACCOUNT_PER_MINUTE: int = 5  # tentatives de connexion, par compte
+    RATE_LIMIT_CHAT_PER_MINUTE: int = 20  # questions, par utilisateur
+    DAILY_QUESTION_QUOTA: int = 200  # questions par utilisateur et par jour (0 = illimité) ; admins exemptés
+    # true derrière un reverse proxy de confiance : l'IP du client est lue dans X-Forwarded-For
+    TRUST_PROXY_HEADERS: bool = False
+
     # --- CORS : origines autorisées, séparées par des virgules ---
     CORS_ORIGINS: str = (
         "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,"

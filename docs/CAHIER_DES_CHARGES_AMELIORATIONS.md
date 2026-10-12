@@ -181,7 +181,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 ### Lot 5 — Mise en production
 
 - [ ] **L5.1** Déploiement (front statique + API conteneurisée + Postgres managé).
-- [ ] **L5.2** Rate limiting et quotas par utilisateur.
+- [x] **L5.2** Rate limiting et quotas par utilisateur. *Fenêtre glissante en mémoire par processus (voir limites dans `api/ratelimit.py`) ; quota quotidien compté en base, donc global.*
 - [ ] **L5.3** Observabilité (Langfuse / LangSmith, logs structurés, alertes de latence et d'erreurs).
 - [ ] **L5.4** Sauvegardes de la base, rotation des secrets.
 - [ ] **L5.5** Pages légales (mentions, confidentialité).

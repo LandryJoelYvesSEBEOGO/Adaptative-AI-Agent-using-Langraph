@@ -57,6 +57,20 @@ def record_request(
         )
 
 
+def count_requests_today(user_id: str) -> int:
+    """Questions posées aujourd'hui (UTC) par un utilisateur, réussies ou non (sert au quota)."""
+    midnight = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    with session_scope() as db:
+        return (
+            db.scalar(
+                select(func.count(RagRequest.id)).where(
+                    RagRequest.user_id == user_id, RagRequest.created_at >= midnight
+                )
+            )
+            or 0
+        )
+
+
 def get_metrics_overview() -> Dict:
     today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     with session_scope() as db:
