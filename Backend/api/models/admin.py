@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Literal, Optional
+
 from pydantic import BaseModel
 
 
@@ -63,3 +66,18 @@ class SystemStatus(BaseModel):
     vector_db: str  # "Connected" | "Disconnected"
     llm_status: str  # "Operational" | "Degraded" | "Down"
     uptime_percentage: float
+
+
+class AdminUser(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: Literal["admin", "user"]
+    created_at: datetime
+    conversations: int
+    requests: int
+    last_activity: Optional[datetime] = None
+
+
+class RoleUpdate(BaseModel):
+    role: Literal["admin", "user"]
