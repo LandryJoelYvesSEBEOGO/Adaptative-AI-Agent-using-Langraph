@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import List
 
 
 class MetricOverview(BaseModel):
@@ -61,6 +60,6 @@ class LatencyTrendPoint(BaseModel):
 
 class SystemStatus(BaseModel):
     rag_pipeline: str  # "Active" | "Inactive"
-    vector_db: str     # "Connected" | "Disconnected"
-    llm_status: str    # "Operational" | "Degraded" | "Down"
+    vector_db: str  # "Connected" | "Disconnected"
+    llm_status: str  # "Operational" | "Degraded" | "Down"
     uptime_percentage: float

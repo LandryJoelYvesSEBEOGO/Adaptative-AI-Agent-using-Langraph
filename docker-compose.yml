@@ -1,0 +1,47 @@
+# Lancement complet : `docker compose up --build`
+#   Frontend : http://localhost:8080   API : http://localhost:8000/docs
+# Prérequis : Backend/.env (copié de Backend/.env.example) avec les clés d'API
+# et JWT_SECRET_KEY. DATABASE_URL est fourni ci-dessous pour le conteneur.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rag
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rag}
+      POSTGRES_DB: rag
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rag -d rag"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./Backend
+    env_file: ./Backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://rag:${POSTGRES_PASSWORD:-rag}@postgres:5432/rag
+      CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      # Index vectoriel et corpus (hors image)
+      - ragdata:/app/data
+
+  frontend:
+    build:
+      context: ./Frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8000/api/v1
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
+  ragdata:

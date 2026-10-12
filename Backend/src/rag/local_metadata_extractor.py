@@ -11,7 +11,7 @@ Modèles utilisés:
 import os
 import sys
 import warnings
-from typing import List, Dict, Optional
+from typing import List, Dict
 from langchain_core.documents import Document
 
 # Ajouter le répertoire racine au path
@@ -122,7 +122,7 @@ def _get_summarization_model():
             
             # Configuration du device (GPU/CPU)
             # Forcer l'utilisation du GPU si configuré
-            if Config.FORCE_GPU or (hasattr(Config, 'DEVICE_PREFERENCE') and Config.DEVICE_PREFERENCE == "cuda"):
+            if Config.DEVICE_PREFERENCE == "cuda":
                 device = 0  # GPU
                 if torch.cuda.is_available():
                     print(f"[INFO] Utilisation du GPU pour le modèle de résumé: {torch.cuda.get_device_name(0)}")

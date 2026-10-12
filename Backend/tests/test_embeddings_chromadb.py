@@ -7,15 +7,16 @@ Script de diagnostic pour identifier le blocage:
 
 import os
 import sys
+import threading
 import time
 import traceback
-import threading
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 print("=" * 80)
@@ -25,6 +26,7 @@ print()
 
 # Configuration
 from config.Config import Config
+
 CHROMA_DB_DIR = os.path.join(project_root, "chroma_db")
 
 # ============================================================================
@@ -34,25 +36,25 @@ print("TEST 1: NomicEmbeddings SEUL (sans ChromaDB)")
 print("-" * 80)
 
 try:
-    from langchain_nomic.embeddings import NomicEmbeddings
     import torch
-    
+    from langchain_nomic.embeddings import NomicEmbeddings
+
     # Détection du device
     device = "cpu"
     if torch.cuda.is_available():
         device = "cuda"
         print(f"[INFO] CUDA détecté: {torch.cuda.get_device_name(0)}")
-        print(f"[INFO] Mémoire GPU disponible: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
+        print(
+            f"[INFO] Mémoire GPU disponible: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB"
+        )
     else:
         print("[INFO] CUDA non disponible, utilisation du CPU")
-    
+
     print(f"\n[1.1] Création du modèle NomicEmbeddings (device: {device})...")
     start = time.time()
     try:
         embedding_model = NomicEmbeddings(
-            model=Config.NomicEmbeddings_model,
-            inference_mode="local",
-            device=device
+            model=Config.NomicEmbeddings_model, inference_mode="local", device=device
         )
         creation_time = time.time() - start
         print(f"[OK] Modele cree en {creation_time:.2f}s")
@@ -60,15 +62,15 @@ try:
         print(f"[ERREUR] Erreur lors de la creation: {str(e)}")
         traceback.print_exc()
         raise
-    
+
     # Test d'embedding avec timeout
-    print(f"\n[1.2] Test génération d'embedding (peut prendre 10-60s)...")
+    print("\n[1.2] Test génération d'embedding (peut prendre 10-60s)...")
     print("     Si ça bloque plus de 2 minutes, appuyez sur Ctrl+C")
-    
+
     result_container = [None]
     exception_container = [None]
     start_embed = time.time()
-    
+
     def embed_test():
         try:
             test_text = "What is a large language model?"
@@ -76,14 +78,14 @@ try:
             result_container[0] = embedding_model.embed_query(test_text)
         except Exception as e:
             exception_container[0] = e
-    
+
     # Thread avec timeout
     thread = threading.Thread(target=embed_test, daemon=True)
     thread.start()
     thread.join(timeout=120)  # 2 minutes max
-    
+
     elapsed = time.time() - start_embed
-    
+
     if thread.is_alive():
         print(f"[ERREUR] TIMEOUT après {elapsed:.2f}s")
         print("    Le modèle NomicEmbeddings bloque lors de l'embedding!")
@@ -99,11 +101,11 @@ try:
         print(f"   Dimensions: {len(embedding)}")
         print(f"   Extrait: {embedding[:5]}...")
         nomic_ok = True
-    
+
     del embedding_model
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-        
+
 except Exception as e:
     print(f"[ERREUR] ERREUR CRITIQUE dans TEST 1: {str(e)}")
     traceback.print_exc()
@@ -121,25 +123,25 @@ print("-" * 80)
 chromadb_ok = False
 if os.path.exists(CHROMA_DB_DIR) and os.listdir(CHROMA_DB_DIR):
     print("[INFO] ChromaDB existe.")
-    
+
     try:
         from chromadb import PersistentClient
-        
+
         print("[2.1] Connexion à ChromaDB...")
         start = time.time()
         client = PersistentClient(path=CHROMA_DB_DIR)
         elapsed = time.time() - start
         print(f"[OK] Connexion réussie en {elapsed:.2f}s")
-        
+
         print("[2.2] Vérification des collections...")
         collections = client.list_collections()
         print(f"[OK] {len(collections)} collection(s) trouvée(s):")
         for col in collections:
             count = col.count()
             print(f"   - {col.name}: {count} documents")
-        
+
         chromadb_ok = True
-        
+
     except Exception as e:
         print(f"[ERREUR] Erreur avec ChromaDB: {str(e)}")
         traceback.print_exc()
@@ -163,43 +165,38 @@ elif not chromadb_ok and not os.path.exists(CHROMA_DB_DIR):
     print("[ATTENTION] Skippé car ChromaDB n'existe pas")
 else:
     try:
-        from langchain_nomic.embeddings import NomicEmbeddings
-        from langchain_chroma import Chroma
         import torch
-        
+        from langchain_chroma import Chroma
+        from langchain_nomic.embeddings import NomicEmbeddings
+
         device = "cpu"
         if torch.cuda.is_available():
             device = "cuda"
-        
+
         print(f"[3.1] Création du modèle d'embedding (device: {device})...")
         start = time.time()
         embedding_model = NomicEmbeddings(
-            model=Config.NomicEmbeddings_model,
-            inference_mode="local",
-            device=device
+            model=Config.NomicEmbeddings_model, inference_mode="local", device=device
         )
         print(f"[OK] Modèle créé en {time.time() - start:.2f}s")
-        
-        print(f"[3.2] Chargement de ChromaDB avec embedding...")
+
+        print("[3.2] Chargement de ChromaDB avec embedding...")
         start = time.time()
-        vectorstore = Chroma(
-            persist_directory=CHROMA_DB_DIR,
-            embedding_function=embedding_model
-        )
+        vectorstore = Chroma(persist_directory=CHROMA_DB_DIR, embedding_function=embedding_model)
         print(f"[OK] ChromaDB chargée en {time.time() - start:.2f}s")
-        
-        print(f"[3.3] Création du retriever...")
+
+        print("[3.3] Création du retriever...")
         retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-        print(f"[OK] Retriever créé")
-        
+        print("[OK] Retriever créé")
+
         # Test du retriever avec timeout
-        print(f"\n[3.4] Test retriever.invoke() (peut prendre 30s-2min)...")
+        print("\n[3.4] Test retriever.invoke() (peut prendre 30s-2min)...")
         print("     Si ça bloque plus de 3 minutes, appuyez sur Ctrl+C")
-        
+
         result_container = [None]
         exception_container = [None]
         start_invoke = time.time()
-        
+
         def retrieve_test():
             try:
                 query = "What is a Large Language Model?"
@@ -207,13 +204,13 @@ else:
                 result_container[0] = retriever.invoke(query)
             except Exception as e:
                 exception_container[0] = e
-        
+
         thread = threading.Thread(target=retrieve_test, daemon=True)
         thread.start()
         thread.join(timeout=180)  # 3 minutes max
-        
+
         elapsed = time.time() - start_invoke
-        
+
         if thread.is_alive():
             print(f"[ERREUR] TIMEOUT après {elapsed:.2f}s")
             print("    Le retriever bloque lors de l'invocation!")
@@ -231,11 +228,11 @@ else:
             print(f"   Documents trouvés: {len(docs)}")
             if docs:
                 print(f"   Premier document: {len(docs[0].page_content)} caractères")
-        
+
         del embedding_model, vectorstore, retriever
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-            
+
     except Exception as e:
         print(f"[ERREUR] ERREUR CRITIQUE dans TEST 3: {str(e)}")
         traceback.print_exc()
@@ -252,4 +249,3 @@ print()
 print("Si NomicEmbeddings bloque seul -> Probleme avec le modele/GPU")
 print("Si seul retriever.invoke() bloque -> Probleme d'interaction ChromaDB/Embedding")
 print("=" * 80)
-

@@ -1,15 +1,19 @@
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
-from typing import Optional, List
+
 
 class ChatQueryRequest(BaseModel):
     question: str = Field(..., max_length=2000)
     conversation_id: Optional[str] = None  # Pour maintenir le contexte
+
 
 class Citation(BaseModel):
     id: int
     source: str
     excerpt: str
     metadata: Optional[dict] = None
+
 
 class ChatQueryResponse(BaseModel):
     response: str
@@ -18,6 +22,7 @@ class ChatQueryResponse(BaseModel):
     latency: Optional[float] = None
     success: bool = True
     error: Optional[str] = None
+
 
 class FeedbackRequest(BaseModel):
     message_id: str

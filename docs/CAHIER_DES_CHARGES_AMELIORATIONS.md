@@ -146,15 +146,15 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L1.6** Ne plus renvoyer le détail des exceptions au client ; authentifier et persister `/feedback`.
 - [x] **L1.7** Corriger le prompt du routeur pour le corpus actuel (R1).
 
-### Lot 2 — Fondations backend *(~1 semaine)*
+### Lot 2 — Fondations backend *(terminé)*
 
-- [ ] **L2.1** Migrer vers uv + `pyproject.toml` ; ajouter ruff et pyright.
-- [ ] **L2.2** Configuration via `pydantic-settings` (environnements dev / prod, aucune valeur sensible en dur, `FORCE_GPU` supprimé).
-- [ ] **L2.3** PostgreSQL + SQLAlchemy 2 + Alembic ; tables `users`, `conversations`, `messages`, `rag_requests`, `feedback`, `documents`.
-- [ ] **L2.4** Découper `Rag_model.py` en modules (`retrieval/`, `generation/`, `grading/`, `graph.py`) sans effet de bord à l'import.
-- [ ] **L2.5** Routes async ; le travail bloquant sort de la boucle d'événements. *Acceptation : deux requêtes simultanées sont traitées en parallèle.*
-- [ ] **L2.6** Supprimer le code dupliqué (`metrics_service.py`) et le système de métriques JSONL redondant.
-- [ ] **L2.7** `docker compose` (api, postgres, frontend) + CI GitHub Actions (lint, typage, tests, build).
+- [x] **L2.1** Migrer vers uv + `pyproject.toml` ; ajouter ruff et pyright.
+- [x] **L2.2** Configuration via `pydantic-settings` (environnements dev / prod, aucune valeur sensible en dur, `FORCE_GPU` supprimé).
+- [x] **L2.3** PostgreSQL + SQLAlchemy 2 + Alembic ; tables `users`, `conversations`, `messages`, `rag_requests`, `feedback`, `documents`.
+- [x] **L2.4** Découper `Rag_model.py` en modules (`retrieval/`, `generation/`, `grading/`, `graph.py`) sans effet de bord à l'import.
+- [x] **L2.5** Routes async ; le travail bloquant sort de la boucle d'événements. *Acceptation : deux requêtes simultanées sont traitées en parallèle.*
+- [x] **L2.6** Supprimer le code dupliqué (`metrics_service.py`) et le système de métriques JSONL redondant.
+- [x] **L2.7** `docker compose` (api, postgres, frontend) + CI GitHub Actions (lint, typage, tests, build).
 
 ### Lot 3 — Qualité du RAG *(1 à 2 semaines)*
 

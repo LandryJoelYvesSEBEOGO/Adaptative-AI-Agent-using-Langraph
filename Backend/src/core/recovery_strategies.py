@@ -6,7 +6,6 @@ from langchain_core.documents import Document
 from langchain_groq import ChatGroq
 
 from config.Config import Config
-from src.rag.Data_processing import get_retriever
 
 
 class RecoveryStrategy:
@@ -52,6 +51,8 @@ class RecoveryStrategy:
         
         # Récupérer plus de documents
         try:
+            from src.rag.Data_processing import get_retriever
+
             retriever = get_retriever()
             current_k = len(state.get("documents", []))
             new_k = int(current_k * expansion_factor)
