@@ -14,7 +14,13 @@ from alembic.migration import MigrationContext  # noqa: E402
 from sqlalchemy import inspect  # noqa: E402
 
 from alembic import command  # noqa: E402
-from api.database import Base, get_engine, include_object, run_migrations  # noqa: E402
+from api.database import (  # noqa: E402
+    Base,
+    get_engine,
+    include_object,
+    run_migrations,
+    session_scope,
+)
 from api.services import conversation_service as conv  # noqa: E402
 from api.services import metrics_service as metrics  # noqa: E402
 from api.services.auth_service import (  # noqa: E402
@@ -123,3 +129,31 @@ def test_metrics_aggregation():
     assert metrics.get_latency_trend(7)[-1]["endToEnd"] == pytest.approx(2.0)
     stats = {s["name"]: s for s in metrics.get_latency_component_stats()}
     assert stats["End-to-End"]["avg"] == pytest.approx(2.0)
+
+
+def test_system_status_reflects_the_real_state(monkeypatch):
+    from api.db_models import Document
+
+    with session_scope() as db:
+        db.query(Document).filter(Document.filename == "status-probe.pdf").delete()
+    monkeypatch.setenv("GROQ_API_KEY", "")
+    from config.settings import get_settings
+
+    get_settings.cache_clear()
+    try:
+        status = metrics.get_system_status()
+        assert status["llm_status"] == "Down"  # pas de clé configurée
+        before = status["documents_ready"]
+
+        with session_scope() as db:
+            db.add(Document(filename="status-probe.pdf", status="ready"))
+        monkeypatch.setenv("GROQ_API_KEY", "k")
+        get_settings.cache_clear()
+        after = metrics.get_system_status()
+        assert after["documents_ready"] == before + 1 and after["rag_pipeline"] == "Active"
+        assert after["llm_status"] in {"Operational", "Degraded"}
+        assert after["vector_db"] in {"Connected", "Disconnected"}
+    finally:
+        get_settings.cache_clear()
+        with session_scope() as db:
+            db.query(Document).filter(Document.filename == "status-probe.pdf").delete()

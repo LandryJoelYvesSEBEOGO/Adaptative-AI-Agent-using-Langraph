@@ -1,84 +1,81 @@
 # RAG System
 
-Agent de question-réponse à génération augmentée par récupération (RAG) : recherche hybride (vecteurs + BM25), reranking cross-encoder, orchestration LangGraph et repli sur la recherche web. Interface de chat React et tableau de bord d'administration.
+Assistant de question-réponse **sourcé** sur un corpus de documents financiers (rapports 10-K / 10-Q) : recherche hybride (vecteurs + plein texte PostgreSQL, fusion RRF), reranking, génération en streaming avec citations cliquables vers la page du PDF, et repli sur la recherche web quand le corpus ne suffit pas. Interface de chat React et tableau de bord d'administration.
 
-> **Statut** : en cours de mise à niveau vers un MVP. Voir le [cahier des charges d'améliorations](docs/CAHIER_DES_CHARGES_AMELIORATIONS.md).
+> **Statut** : MVP en cours de mise en production. Voir le [cahier des charges d'améliorations](docs/CAHIER_DES_CHARGES_AMELIORATIONS.md) pour l'avancement par lot.
 
 ## Structure du dépôt
 
 ```
 .
-├── Backend/              API FastAPI + pipeline RAG (Python)
-│   ├── api/              Application FastAPI : routes, modèles, services, accès base
-│   ├── config/           Configuration (Config.py)
-│   ├── src/
-│   │   ├── core/         Briques transverses : logs, métriques, retry, fallback, clés Groq
-│   │   └── rag/          Pipeline RAG : ingestion, prompts, graphe LangGraph
-│   ├── scripts/          Scripts utilitaires (reconstruction d'index, métriques, GPU)
-│   ├── tests/            Tests
-│   ├── data/             Données locales (non versionnées sauf few_shot_examples.json)
-│   └── run_api.py        Point d'entrée de l'API
-├── Frontend/             Application React (Vite + TypeScript + Tailwind + shadcn/ui)
-└── docs/                 Documentation du projet
+├── Backend/              API FastAPI + pipeline RAG (Python, uv)
+│   ├── api/              Routes, modèles Pydantic, services, base de données (SQLAlchemy)
+│   ├── alembic/          Migrations de la base
+│   ├── config/           Configuration (pydantic-settings)
+│   ├── src/rag/          Pipeline : analyse, recherche hybride, rerank, génération (LangGraph)
+│   ├── src/ingestion/    Ingestion des PDF : parsing, chunking par sections, métadonnées
+│   ├── evaluation/       Évaluation de la qualité (FinanceBench)
+│   ├── scripts/          Indexation du corpus, export du schéma OpenAPI
+│   └── tests/            Tests (API, base, pipeline, ingestion, recherche, évaluation)
+├── Frontend/             React 19 + Vite + Tailwind 4 + TypeScript strict
+│   ├── src/api/          Client généré depuis l'OpenAPI, flux SSE, hooks TanStack Query
+│   ├── e2e/              Parcours navigateur (Playwright)
+│   └── openapi.json      Schéma de l'API (source du client, contrôlé en CI)
+├── docs/                 Documentation et cahier des charges
+├── docker-compose.yml    api + PostgreSQL/pgvector + frontend (nginx)
+└── .github/workflows/    CI (lint, typage, tests, e2e) et évaluation à la demande
 ```
 
 ## Démarrage rapide
 
-**Prérequis** : Python 3.11+, Node.js 20+.
-
-### Lancement en une commande (Docker)
+### Docker (une commande)
 
 ```bash
-cp Backend/.env.example Backend/.env   # renseigner les clés d'API et JWT_SECRET_KEY
+cp Backend/.env.example Backend/.env   # renseigner GROQ_API_KEY, TAVILY_API_KEY, JWT_SECRET_KEY, ADMIN_*
 docker compose up --build
 ```
 
-Frontend : http://localhost:8080 — API : http://localhost:8000/docs (PostgreSQL + pgvector inclus, migrations appliquées au démarrage).
+Application : http://localhost:8080 — documentation de l'API : http://localhost:8000/docs.
 
-Indexer le corpus (PDF dans le volume `ragdata`, ex. `data/raw`) ou téléverser via `POST /api/v1/documents` (administrateur) :
+Indexer le corpus (PDF placés dans le volume `ragdata`) ou, plus simplement, les téléverser depuis l'interface d'administration (page *Documents*) :
 
 ```bash
 docker compose exec api python -m scripts.ingest_corpus data/raw
 ```
 
-### Lancement manuel
+### Développement local
 
-### 1. Backend
+**Prérequis** : Python 3.11+ avec [uv](https://docs.astral.sh/uv/), Node.js 22+, et PostgreSQL avec l'extension pgvector pour la recherche (`docker compose up postgres` suffit).
 
 ```bash
+# Backend
 cd Backend
 uv sync
-cp .env.example .env        # puis renseigner les clés
-uv run python run_api.py
-```
+cp .env.example .env        # DATABASE_URL=postgresql+psycopg://rag:rag@localhost:5432/rag, clés, etc.
+uv run uvicorn api.main:app --reload
 
-L'API écoute sur http://127.0.0.1:8000 (documentation interactive : `/docs`).
-
-### 2. Frontend
-
-```bash
+# Frontend (autre terminal) : /api est relayé vers le backend, même origine
 cd Frontend
 npm install
-cp .env.example .env.local
-npm run dev
+npm run dev                 # http://localhost:8080
 ```
 
-L'application est servie sur http://localhost:8080.
+Sans `DATABASE_URL`, l'API utilise SQLite (comptes, conversations, métriques) mais la **recherche documentaire exige PostgreSQL + pgvector**.
 
-### 3. Données
+## Qualité
 
-Placer les PDF à indexer dans `Backend/data/raw/` (dossier non versionné), puis construire l'index :
+| Quoi | Commande |
+|---|---|
+| Backend : lint, format, typage, tests | `cd Backend && uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest` |
+| Frontend : typage, lint, tests | `cd Frontend && npm run typecheck && npx eslint . && npm test` |
+| Parcours navigateur | `cd Frontend && npm run build && npm run test:e2e` |
+| Qualité des réponses (FinanceBench) | voir [Backend/evaluation/README.md](Backend/evaluation/README.md) |
 
-```bash
-cd Backend
-python scripts/rebuild_index.py
-```
+Après toute modification de l'API : `cd Backend && uv run python -m scripts.export_openapi` puis `cd Frontend && npm run api:generate` (la CI vérifie la cohérence).
 
 ## Documentation
 
 | Document | Contenu |
 |---|---|
-| [Cahier des charges d'améliorations](docs/CAHIER_DES_CHARGES_AMELIORATIONS.md) | Audit, stack cible et feuille de route vers le MVP |
-| [Architecture](docs/architecture.md) | Architecture détaillée du pipeline RAG et des métriques |
-| [Rotation des clés Groq](docs/rotation-cles-groq.md) | Fonctionnement du gestionnaire de clés |
-| [Modèles de métadonnées](docs/installation-modeles-metadonnees.md) | Installation des modèles locaux (spaCy, KeyBERT…) |
+| [Cahier des charges d'améliorations](docs/CAHIER_DES_CHARGES_AMELIORATIONS.md) | Audit, stack cible, feuille de route et avancement |
+| [Architecture (historique)](docs/architecture.md) | Pipeline *avant* le lot 3 ; l'actuel est dans `Backend/src/rag/pipeline.py` |

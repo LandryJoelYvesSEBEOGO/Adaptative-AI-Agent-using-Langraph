@@ -1,9 +1,10 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from api.dependencies import require_admin
 from api.models.admin import (
+    AdminUser,
     ErrorDistribution,
     LatencyComponentStat,
     LatencyTrendPoint,
@@ -11,8 +12,10 @@ from api.models.admin import (
     RecentRequest,
     RequestDataPoint,
     RequestDetail,
+    RoleUpdate,
     SystemStatus,
 )
+from api.services import user_service
 from api.services.metrics_service import (
     get_error_distribution,
     get_latency_component_stats,
@@ -106,3 +109,37 @@ def get_system_status_endpoint():
 
     status = get_system_status()
     return SystemStatus(**status)
+
+
+@router.get("/users", response_model=List[AdminUser])
+def list_users_endpoint():
+    """Utilisateurs et leur activité."""
+    return user_service.list_users()
+
+
+def _raise_for(error: str | None) -> None:
+    if error == "not_found":
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    if error == "last_admin":
+        raise HTTPException(status_code=409, detail="Impossible : dernier administrateur")
+
+
+@router.patch("/users/{user_id}", response_model=AdminUser)
+def update_user_role(
+    user_id: str, payload: RoleUpdate, current_user: dict = Depends(require_admin)
+):
+    """Change le rôle d'un utilisateur (jamais le sien : on ne se rétrograde pas soi-même)."""
+    if user_id == current_user["id"]:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas modifier votre propre rôle")
+    _raise_for(user_service.set_role(user_id, payload.role))
+    return next(u for u in user_service.list_users() if u["id"] == user_id)
+
+
+@router.delete("/users/{user_id}", status_code=204)
+def delete_user_endpoint(user_id: str, current_user: dict = Depends(require_admin)):
+    """Supprime un compte et ses conversations (jamais le sien)."""
+    if user_id == current_user["id"]:
+        raise HTTPException(
+            status_code=400, detail="Vous ne pouvez pas supprimer votre propre compte"
+        )
+    _raise_for(user_service.delete_user(user_id))

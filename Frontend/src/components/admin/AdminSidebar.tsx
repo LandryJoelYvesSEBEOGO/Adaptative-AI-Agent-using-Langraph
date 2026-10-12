@@ -1,18 +1,16 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Activity,
   Server,
-  MessageSquare,
+  FileText,
   Users,
-  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/stores/authStore";
+import { useLogout, useSession } from "@/auth/session";
 import SidebarLink from "./SidebarLink";
 import { Button } from "@/components/ui/button";
 
@@ -25,18 +23,17 @@ const navItems = [
   { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/admin/metrics", icon: Activity, label: "Métriques" },
   { to: "/admin/api-requests", icon: Server, label: "Requêtes API" },
-  { to: "/admin/answer-quality", icon: MessageSquare, label: "Qualité" },
+  { to: "/admin/documents", icon: FileText, label: "Documents" },
   { to: "/admin/users", icon: Users, label: "Utilisateurs" },
-  { to: "/admin/settings", icon: Settings, label: "Paramètres" },
 ];
 
 const AdminSidebar = ({ collapsed, onToggle }: AdminSidebarProps) => {
-  const { logout, user } = useAuthStore();
+  const { data: user } = useSession();
+  const logout = useLogout();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout();
-    navigate("/");
+    logout.mutate(undefined, { onSettled: () => navigate("/") });
   };
 
   return (
@@ -111,7 +108,7 @@ const AdminSidebar = ({ collapsed, onToggle }: AdminSidebarProps) => {
       {/* Collapse toggle */}
       <button
         onClick={onToggle}
-        className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-card border border-border flex items-center justify-center hover:bg-accent transition-colors shadow-sm"
+        className="absolute -right-3 top-20 w-6 h-6 rounded-full bg-card border border-border flex items-center justify-center hover:bg-accent transition-colors shadow-xs"
       >
         {collapsed ? (
           <ChevronRight className="w-3 h-3" />

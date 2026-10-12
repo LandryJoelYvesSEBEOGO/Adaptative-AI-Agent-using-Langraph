@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Literal, Optional
+
 from pydantic import BaseModel
 
 
@@ -29,7 +32,7 @@ class RecentRequest(BaseModel):
     timestamp: str
     user: str
     question: str
-    status: str  # "success" | "error"
+    status: Literal["success", "error"]
     latency: float
 
 
@@ -38,7 +41,7 @@ class RequestDetail(BaseModel):
     timestamp: str
     user: str
     question: str
-    status: str  # "success" | "error"
+    status: Literal["success", "error"]
     latency: float
     docs_count: int
     quality: float
@@ -59,7 +62,23 @@ class LatencyTrendPoint(BaseModel):
 
 
 class SystemStatus(BaseModel):
-    rag_pipeline: str  # "Active" | "Inactive"
-    vector_db: str  # "Connected" | "Disconnected"
-    llm_status: str  # "Operational" | "Degraded" | "Down"
-    uptime_percentage: float
+    rag_pipeline: Literal["Active", "Inactive"]  # Active : au moins un document indexé
+    vector_db: Literal["Connected", "Disconnected"]  # PostgreSQL + pgvector joignable
+    llm_status: Literal["Operational", "Degraded", "Down"]  # clé configurée, taux d'erreur 24 h
+    availability_24h: Optional[float] = None  # % de requêtes réussies sur 24 h ; None sans trafic
+    documents_ready: int = 0
+
+
+class AdminUser(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: Literal["admin", "user"]
+    created_at: datetime
+    conversations: int
+    requests: int
+    last_activity: Optional[datetime] = None
+
+
+class RoleUpdate(BaseModel):
+    role: Literal["admin", "user"]

@@ -23,7 +23,6 @@ if len(SECRET_KEY) < 32:
         'Générez-en une avec : python -c "import secrets; print(secrets.token_urlsafe(48))"'
     )
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 heures
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -54,16 +53,28 @@ def get_user_by_id(user_id: str) -> Optional[dict]:
         return _to_dict(user) if user else None
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Crée un token JWT."""
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(UTC) + expires_delta
-    else:
-        expire = datetime.now(UTC) + timedelta(minutes=15)
+def _encode(user_id: str, token_type: str, lifetime: timedelta) -> str:
+    claims = {"sub": user_id, "type": token_type, "exp": datetime.now(UTC) + lifetime}
+    return jwt.encode(claims, SECRET_KEY, algorithm=ALGORITHM)
 
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def create_access_token(user_id: str) -> str:
+    """Jeton d'accès à courte durée (cookie `access_token` ou en-tête Bearer)."""
+    return _encode(user_id, "access", timedelta(minutes=get_settings().ACCESS_TOKEN_MINUTES))
+
+
+def create_refresh_token(user_id: str) -> str:
+    """Jeton de renouvellement (cookie httpOnly limité à /api/v1/auth)."""
+    return _encode(user_id, "refresh", timedelta(days=get_settings().REFRESH_TOKEN_DAYS))
+
+
+def decode_token(token: str, expected_type: str) -> Optional[dict]:
+    """Décode et vérifie un jeton ; None s'il est invalide, expiré ou d'un autre type."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        return None
+    return payload if payload.get("type") == expected_type else None
 
 
 def authenticate_user(email: str, password: str) -> Optional[dict]:
@@ -72,14 +83,6 @@ def authenticate_user(email: str, password: str) -> Optional[dict]:
     if not user or not verify_password(password, user["hashed_password"]):
         return None
     return {k: v for k, v in user.items() if k != "hashed_password"}
-
-
-def verify_token(token: str) -> Optional[dict]:
-    """Vérifie et décode un token JWT."""
-    try:
-        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
-        return None
 
 
 def create_user(email: str, password: str, name: str, role: str = "user") -> Optional[dict]:

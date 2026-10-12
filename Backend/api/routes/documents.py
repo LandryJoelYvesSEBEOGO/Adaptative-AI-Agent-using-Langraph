@@ -4,18 +4,16 @@ from typing import List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
 
-from api.dependencies import require_admin
+from api.dependencies import get_current_user, require_admin
 from api.models.documents import DocumentOut
 from api.services import document_service
 from config.settings import get_settings
 from src.ingestion.service import ingest_document
 
-router = APIRouter(
-    prefix="/api/v1/documents",
-    tags=["documents"],
-    dependencies=[Depends(require_admin)],
-)
+router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
+admin_only = [Depends(require_admin)]
 
 _SAFE_NAME = re.compile(r"[^A-Za-z0-9._\- ]")
 
@@ -38,7 +36,7 @@ async def _read_pdf(upload: UploadFile) -> bytes:
     return data
 
 
-@router.post("", response_model=DocumentOut, status_code=202)
+@router.post("", response_model=DocumentOut, status_code=202, dependencies=admin_only)
 async def upload_document(
     background: BackgroundTasks,
     file: UploadFile = File(...),
@@ -68,12 +66,12 @@ async def upload_document(
     return doc
 
 
-@router.get("", response_model=List[DocumentOut])
+@router.get("", response_model=List[DocumentOut], dependencies=admin_only)
 def list_documents():
     return document_service.list_documents()
 
 
-@router.get("/{document_id}", response_model=DocumentOut)
+@router.get("/{document_id}", response_model=DocumentOut, dependencies=admin_only)
 def get_document(document_id: str):
     doc = document_service.get_document(document_id)
     if doc is None:
@@ -81,7 +79,9 @@ def get_document(document_id: str):
     return doc
 
 
-@router.post("/{document_id}/reindex", response_model=DocumentOut, status_code=202)
+@router.post(
+    "/{document_id}/reindex", response_model=DocumentOut, status_code=202, dependencies=admin_only
+)
 def reindex_document(document_id: str, background: BackgroundTasks):
     doc = document_service.get_document(document_id)
     if doc is None:
@@ -90,7 +90,22 @@ def reindex_document(document_id: str, background: BackgroundTasks):
     return doc
 
 
-@router.delete("/{document_id}", status_code=204)
+@router.get("/{document_id}/file", dependencies=[Depends(get_current_user)])
+def download_document(document_id: str):
+    """PDF source d'un document, pour l'aperçu des citations (tout utilisateur connecté :
+    le corpus indexé est commun)."""
+    doc = document_service.get_document(document_id)
+    path = Path(doc["source_path"]) if doc and doc.get("source_path") else None
+    if doc is None or path is None or not path.is_file():
+        raise HTTPException(status_code=404, detail="Document introuvable")
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{doc["filename"]}"'},
+    )
+
+
+@router.delete("/{document_id}", status_code=204, dependencies=admin_only)
 def delete_document(document_id: str):
     if not document_service.delete_document(document_id):
         raise HTTPException(status_code=404, detail="Document introuvable")

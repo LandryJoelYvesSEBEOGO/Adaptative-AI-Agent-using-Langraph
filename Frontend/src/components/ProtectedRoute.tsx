@@ -1,5 +1,8 @@
+import { Loader2 } from "lucide-react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuthStore, UserRole } from "@/stores/authStore";
+
+import type { UserRole } from "@/api/types";
+import { useSession } from "@/auth/session";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -7,19 +10,23 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, user } = useAuthStore();
+  const { data: user, isLoading } = useSession();
   const location = useLocation();
 
-  if (!isAuthenticated) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" role="status" aria-label="Chargement">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // Redirect to appropriate page based on role
-    if (user.role === 'admin') {
-      return <Navigate to="/admin/dashboard" replace />;
-    }
-    return <Navigate to="/chat" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to={user.role === "admin" ? "/admin/dashboard" : "/chat"} replace />;
   }
 
   return <>{children}</>;

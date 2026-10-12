@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   Server,
   CheckCircle2,
@@ -12,63 +11,31 @@ import RequestsChart from "@/components/admin/RequestsChart";
 import RecentActivity from "@/components/admin/RecentActivity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
-import { cn } from "@/lib/utils";
 import {
-  apiClient,
-  ApiError,
-  ErrorDistribution,
-  MetricOverview,
-  RequestDataPoint,
-  RecentRequest,
-  SystemStatus,
-} from "@/services/api";
-import { useToast } from "@/hooks/use-toast";
+  useErrorDistribution,
+  useMetricsOverview,
+  useRecentRequests,
+  useRequestsChart,
+  useSystemStatus,
+} from "@/api/hooks";
+import QueryError from "@/components/QueryError";
+import { cn } from "@/lib/utils";
 
 const AdminDashboard = () => {
-  const [overview, setOverview] = useState<MetricOverview | null>(null);
-  const [chartData, setChartData] = useState<RequestDataPoint[]>([]);
-  const [errorDistribution, setErrorDistribution] = useState<ErrorDistribution | null>(null);
-  const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
-  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
-  const { toast } = useToast();
+  const overviewQuery = useMetricsOverview();
+  const chartQuery = useRequestsChart(7);
+  const errorsQuery = useErrorDistribution();
+  const recentQuery = useRecentRequests(10);
+  const statusQuery = useSystemStatus();
 
-  useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const [
-          overviewData,
-          chartDataResponse,
-          errorDistributionResponse,
-          recentRequestsResponse,
-          systemStatusResponse,
-        ] = await Promise.all([
-          apiClient.getMetricsOverview(),
-          apiClient.getMetricsRequests(7),
-          apiClient.getErrorDistribution(),
-          apiClient.getRecentRequests(10),
-          apiClient.getSystemStatus(),
-        ]);
-
-        setOverview(overviewData);
-        setChartData(chartDataResponse);
-        setErrorDistribution(errorDistributionResponse);
-        setRecentRequests(recentRequestsResponse);
-        setSystemStatus(systemStatusResponse);
-      } catch (error) {
-        const apiError =
-          error instanceof ApiError
-            ? error
-            : new ApiError(error instanceof Error ? error.message : "Erreur lors du chargement");
-        toast({
-          title: "Erreur",
-          description: apiError.getUserMessage(),
-          variant: "destructive",
-        });
-      }
-    };
-
-    loadDashboard();
-  }, [toast]);
+  const overview = overviewQuery.data;
+  const chartData = chartQuery.data ?? [];
+  const errorDistribution = errorsQuery.data;
+  const recentRequests = recentQuery.data ?? [];
+  const systemStatus = statusQuery.data;
+  const failed = [overviewQuery, chartQuery, errorsQuery, recentQuery, statusQuery].find(
+    (query) => query.isError,
+  );
 
   const errorChartData = errorDistribution
     ? [
@@ -80,6 +47,21 @@ const AdminDashboard = () => {
       ]
     : [];
 
+  const healthy = systemStatus
+    ? systemStatus.rag_pipeline === "Active" &&
+      systemStatus.vector_db === "Connected" &&
+      systemStatus.llm_status === "Operational"
+    : null;
+  const overall =
+    healthy === null
+      ? { dot: "bg-muted-foreground", label: "Vérification…" }
+      : healthy
+        ? { dot: "bg-success", label: "Opérationnel" }
+        : systemStatus?.llm_status === "Down" || systemStatus?.vector_db === "Disconnected"
+          ? { dot: "bg-destructive", label: "Incident" }
+          : { dot: "bg-warning", label: "Dégradé" };
+  const tone = (ok: boolean) => (systemStatus ? (ok ? "text-success" : "text-destructive") : "text-muted-foreground");
+
   const successRate = overview ? `${overview.success_rate.toFixed(1)}%` : "--";
   const averageLatency = overview ? `${overview.average_latency.toFixed(2)}s` : "--";
 
@@ -87,7 +69,7 @@ const AdminDashboard = () => {
     <div className="space-y-6 relative">
       {/* Header with gradient effect */}
       <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent blur-3xl opacity-50" />
+        <div className="absolute inset-0 bg-linear-to-r from-primary/5 via-transparent to-transparent blur-3xl opacity-50" />
         <div className="relative flex flex-col gap-1">
           <h1 className="text-4xl md:text-5xl font-oswald font-medium tracking-tight">
             Dashboard
@@ -97,6 +79,17 @@ const AdminDashboard = () => {
           </p>
         </div>
       </div>
+
+      {failed && (
+        <QueryError
+          error={failed.error}
+          onRetry={() => {
+            for (const query of [overviewQuery, chartQuery, errorsQuery, recentQuery, statusQuery]) {
+              if (query.isError) void query.refetch();
+            }
+          }}
+        />
+      )}
 
       {/* Metrics Grid with enhanced cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -185,15 +178,8 @@ const AdminDashboard = () => {
       </div>
 
       {/* System Status with template-inspired design */}
-      <Card className="relative overflow-hidden bg-gradient-to-br from-foreground to-foreground/95 text-background border-0 shadow-xl">
-        <div className="absolute inset-0 opacity-10">
-          <div 
-            className="absolute inset-0"
-            style={{
-              backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')",
-            }}
-          />
-        </div>
+      <Card className="relative overflow-hidden bg-linear-to-br from-foreground to-foreground/95 text-background border-0 shadow-xl">
+        <div className="absolute inset-0 noise-overlay" />
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
         <CardContent className="p-6 relative z-10">
           <div className="flex items-center justify-between mb-6">
@@ -203,24 +189,35 @@ const AdminDashboard = () => {
               </span>
               <h3 className="text-xl font-oswald font-medium">Statut en temps réel</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
-              <span className="text-sm font-medium">Opérationnel</span>
+            <div className="flex items-center gap-2" role="status">
+              <span className={cn("w-2 h-2 rounded-full animate-pulse", overall.dot)} />
+              <span className="text-sm font-medium">{overall.label}</span>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-sm">
-            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-sm border border-background/20">
+            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-xs border border-background/20">
               <span className="text-muted-foreground">&gt; RAG Pipeline</span>
-              <span className="text-success font-semibold">{systemStatus?.rag_pipeline || "—"}</span>
+              <span className={cn("font-semibold", tone(systemStatus?.rag_pipeline === "Active"))}>
+                {systemStatus ? `${systemStatus.rag_pipeline} · ${systemStatus.documents_ready} doc.` : "—"}
+              </span>
             </div>
-            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-sm border border-background/20">
+            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-xs border border-background/20">
               <span className="text-muted-foreground">&gt; Vector DB</span>
-              <span className="text-success font-semibold">{systemStatus?.vector_db || "—"}</span>
+              <span className={cn("font-semibold", tone(systemStatus?.vector_db === "Connected"))}>
+                {systemStatus?.vector_db ?? "—"}
+              </span>
             </div>
-            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-sm border border-background/20">
-              <span className="text-muted-foreground">&gt; LLM Status</span>
-              <span className="text-success font-semibold">
-                {systemStatus ? `${systemStatus.uptime_percentage}% Uptime` : "—"}
+            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-xs border border-background/20">
+              <span className="text-muted-foreground">&gt; LLM</span>
+              <span
+                className={cn(
+                  "font-semibold",
+                  systemStatus?.llm_status === "Degraded" ? "text-warning" : tone(systemStatus?.llm_status === "Operational"),
+                )}
+              >
+                {systemStatus
+                  ? `${systemStatus.llm_status}${systemStatus.availability_24h != null ? ` · ${systemStatus.availability_24h}% (24 h)` : ""}`
+                  : "—"}
               </span>
             </div>
           </div>

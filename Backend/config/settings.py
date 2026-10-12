@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     LANGCHAIN_TRACING_V2: bool = False
     LANGCHAIN_PROJECT: str = "rag-system"
 
+    # --- Sessions (cookies httpOnly) ---
+    ACCESS_TOKEN_MINUTES: int = 30
+    REFRESH_TOKEN_DAYS: int = 7
+    COOKIE_SECURE: bool = False  # true en production (HTTPS)
+    COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
+
     # --- CORS : origines autorisées, séparées par des virgules ---
     CORS_ORIGINS: str = (
         "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,"

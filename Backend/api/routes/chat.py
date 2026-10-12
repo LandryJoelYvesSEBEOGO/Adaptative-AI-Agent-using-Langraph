@@ -1,18 +1,26 @@
+import asyncio
 import json
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+import anyio
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 from api.dependencies import get_current_user
-from api.models.chat import ChatQueryRequest, ChatQueryResponse, FeedbackRequest
+from api.models.chat import (
+    ChatQueryRequest,
+    ChatQueryResponse,
+    FeedbackRequest,
+    FeedbackResponse,
+)
 from api.services import chat_service
 from api.services.conversation_service import (
     add_feedback,
     add_message,
     create_conversation,
     get_conversation,
+    prepare_regeneration,
 )
 from api.services.metrics_service import record_request
 
@@ -60,8 +68,35 @@ def _persist_outcome(
     return message_id
 
 
+def _persist_stopped(conversation_id: str, question: str, user_id: str, text: str) -> None:
+    if text.strip():
+        add_message(conversation_id, "assistant", text, [], stopped=True)
+    record_request(
+        conversation_id=conversation_id,
+        user_id=user_id,
+        question=question,
+        status="error",
+        error="cancelled",
+        latencies=None,
+        docs_count=None,
+        response_length=len(text),
+        answer_quality_score=None,
+        answer_quality_scores=None,
+    )
+
+
 def _start_turn(request: ChatQueryRequest, current_user: dict) -> tuple[str, str]:
-    """Valide la question, résout la conversation et enregistre le message utilisateur."""
+    """Valide la question, résout la conversation et enregistre le message utilisateur
+    (ou, en régénération, retire l'ancienne réponse et reprend la dernière question)."""
+    if request.regenerate:
+        if not request.conversation_id:
+            raise HTTPException(status_code=400, detail="Conversation requise pour régénérer")
+        conversation_id = _resolve_conversation(request, current_user)
+        question = prepare_regeneration(conversation_id)
+        if question is None:
+            raise HTTPException(status_code=400, detail="Aucune question à régénérer")
+        return conversation_id, question
+
     question = (request.question or "").strip()
     if not question:
         raise HTTPException(status_code=400, detail="La question ne peut pas être vide")
@@ -80,32 +115,88 @@ async def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_
     return ChatQueryResponse(**result, message_id=message_id)
 
 
+async def _watch_disconnect(http_request: Request, cancel: asyncio.Event, flag: dict) -> None:
+    """Demande l'arrêt de la génération dès que le client coupe la connexion (bouton Stop)."""
+    while not await http_request.is_disconnected():
+        await asyncio.sleep(0.2)
+    flag["stopped"] = True
+    cancel.set()
+
+
 @router.post("/query/stream")
 async def query_rag_stream(
-    request: ChatQueryRequest, current_user: dict = Depends(get_current_user)
+    payload: ChatQueryRequest,
+    http_request: Request,
+    current_user: dict = Depends(get_current_user),
 ):
-    conversation_id, question = await run_in_threadpool(_start_turn, request, current_user)
+    conversation_id, question = await run_in_threadpool(_start_turn, payload, current_user)
 
     async def event_stream():
-        async for event in chat_service.answer_stream(question, conversation_id):
-            if event["type"] == "token":
-                yield _sse({"chunk": event["text"]})
-                continue
-            result = event["result"]
-            message_id = await run_in_threadpool(
-                _persist_outcome, conversation_id, question, current_user["id"], result
-            )
-            if result["success"]:
-                yield _sse(
-                    {
-                        "citations": result["citations"],
-                        "message_id": message_id,
-                        "conversation_id": conversation_id,
-                    }
+        queue: asyncio.Queue = asyncio.Queue()
+        partial: list[str] = []
+        flag = {"stopped": False}
+
+        cancel = asyncio.Event()
+
+        async def produce() -> None:
+            try:
+                async for event in chat_service.answer_stream(question, conversation_id, cancel):
+                    await queue.put(event)
+            finally:
+                await queue.put(None)  # fin de flux (normale ou annulée)
+
+        producer = asyncio.create_task(produce())
+        watcher = asyncio.create_task(_watch_disconnect(http_request, cancel, flag))
+
+        async def persist_stopped() -> None:
+            with anyio.CancelScope(shield=True):
+                await run_in_threadpool(
+                    _persist_stopped,
+                    conversation_id,
+                    question,
+                    current_user["id"],
+                    "".join(partial),
                 )
-            else:
-                yield _sse({"error": result["error"]})
-        yield "data: [DONE]\n\n"
+
+        try:
+            # Premier événement : l'identifiant de conversation, connu avant la première réponse
+            # (nécessaire au client pour retrouver l'échange s'il interrompt la génération)
+            yield _sse({"conversation_id": conversation_id})
+            while (event := await queue.get()) is not None:
+                if flag["stopped"]:
+                    continue  # on vide le flux : la réponse partielle est enregistrée plus bas
+                if event["type"] == "token":
+                    partial.append(event["text"])
+                    yield _sse({"chunk": event["text"]})
+                    continue
+                result = event["result"]
+                message_id = await run_in_threadpool(
+                    _persist_outcome, conversation_id, question, current_user["id"], result
+                )
+                if result["success"]:
+                    yield _sse(
+                        {
+                            "citations": result["citations"],
+                            "message_id": message_id,
+                            "conversation_id": conversation_id,
+                        }
+                    )
+                else:
+                    yield _sse({"error": result["error"]})
+            if flag["stopped"]:
+                await persist_stopped()
+                return
+            yield "data: [DONE]\n\n"
+        except (asyncio.CancelledError, GeneratorExit):
+            # connexion fermée côté serveur ASGI : on conserve ce qui a été généré
+            flag["stopped"] = True
+            cancel.set()
+            await persist_stopped()
+            raise
+        finally:
+            watcher.cancel()
+            producer.cancel()  # idempotent : propage l'annulation jusqu'à l'appel LLM
+            await asyncio.gather(watcher, producer, return_exceptions=True)
 
     return StreamingResponse(
         event_stream(),
@@ -122,14 +213,9 @@ def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
-@router.post("/feedback")
+@router.post("/feedback", response_model=FeedbackResponse)
 def submit_feedback(request: FeedbackRequest, current_user: dict = Depends(get_current_user)):
-    """
-    Enregistre le feedback utilisateur (thumbs up/down).
-    """
-    if request.feedback_type not in ("thumbs_up", "thumbs_down"):
-        raise HTTPException(status_code=400, detail="feedback_type invalide")
-
+    """Enregistre (ou remplace) l'avis de l'utilisateur sur une réponse de SA conversation."""
     if not add_feedback(
         message_id=request.message_id,
         user_id=current_user["id"],
@@ -138,9 +224,6 @@ def submit_feedback(request: FeedbackRequest, current_user: dict = Depends(get_c
     ):
         raise HTTPException(status_code=404, detail="Message introuvable")
 
-    return {
-        "success": True,
-        "message": "Feedback enregistré avec succès",
-        "message_id": request.message_id,
-        "feedback_type": request.feedback_type,
-    }
+    return FeedbackResponse(
+        success=True, message_id=request.message_id, feedback_type=request.feedback_type
+    )

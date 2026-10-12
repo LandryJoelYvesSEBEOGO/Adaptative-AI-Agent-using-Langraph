@@ -23,6 +23,7 @@ def _msg_dict(msg: Message) -> Dict:
         "role": msg.role,
         "content": msg.content,
         "citations": msg.citations or None,
+        "stopped": bool(msg.stopped),
         "created_at": msg.created_at,
     }
 
@@ -61,6 +62,7 @@ def add_message(
     role: str,
     content: str,
     citations: Optional[List[Dict]] = None,
+    stopped: bool = False,
 ) -> Dict:
     with session_scope() as db:
         msg = Message(
@@ -68,6 +70,7 @@ def add_message(
             role=role,
             content=content,
             citations=citations if citations is not None else None,
+            stopped=stopped,
         )
         db.add(msg)
         conv = db.get(Conversation, conversation_id)
@@ -77,14 +80,19 @@ def add_message(
         return _msg_dict(msg)
 
 
-def list_messages(conversation_id: str) -> List[Dict]:
+def list_messages(conversation_id: str, user_id: Optional[str] = None) -> List[Dict]:
+    """Messages d'une conversation ; avec `user_id`, joint l'avis donné par cet utilisateur."""
     with session_scope() as db:
-        rows = db.scalars(
-            select(Message)
-            .where(Message.conversation_id == conversation_id)
-            .order_by(Message.created_at.asc())
+        stmt = select(Message, Feedback.feedback_type).outerjoin(
+            Feedback,
+            (Feedback.message_id == Message.id) & (Feedback.user_id == user_id),
         )
-        return [_msg_dict(m) for m in rows]
+        rows = db.execute(
+            stmt.where(Message.conversation_id == conversation_id).order_by(
+                Message.created_at.asc()
+            )
+        )
+        return [{**_msg_dict(m), "feedback": feedback} for m, feedback in rows]
 
 
 def add_feedback(
@@ -123,3 +131,24 @@ def add_feedback(
                 )
             )
         return True
+
+
+def prepare_regeneration(conversation_id: str) -> Optional[str]:
+    """Retire la dernière réponse de l'assistant et retourne la question à reposer.
+
+    Retourne None s'il n'y a pas de question utilisateur à régénérer."""
+    with session_scope() as db:
+        messages = list(
+            db.scalars(
+                select(Message)
+                .where(Message.conversation_id == conversation_id)
+                .order_by(Message.created_at.desc())
+                .limit(2)
+            )
+        )
+        if messages and messages[0].role == "assistant":
+            db.delete(messages[0])  # le feedback associé part en cascade
+            messages = messages[1:]
+        if not messages or messages[0].role != "user":
+            return None
+        return messages[0].content
