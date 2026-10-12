@@ -72,4 +72,11 @@ jobs:
           cache: npm
           cache-dependency-path: Frontend/package-lock.json
       - run: npm ci
-      - run: npm run build
+      - name: Typage (TypeScript strict)
+        run: npm run typecheck
+      - name: Lint
+        run: npx eslint .
+      - name: Tests unitaires
+        run: npm test
+      - name: Build
+        run: npm run build

@@ -1,6 +1,6 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
 // Même origine que l'API en développement : cookies de session et contrôle CSRF sans CORS.
@@ -20,6 +20,12 @@ export default defineConfig({
     proxy: apiProxy,
   },
   plugins: [react(), tailwindcss()],
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
+    css: false,
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

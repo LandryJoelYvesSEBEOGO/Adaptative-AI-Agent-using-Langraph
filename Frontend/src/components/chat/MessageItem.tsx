@@ -2,6 +2,7 @@ import { Bot, Copy, RotateCcw, ThumbsDown, ThumbsUp, User } from "lucide-react";
 
 import type { Citation, FeedbackType, Message } from "@/api/types";
 import { Button } from "@/components/ui/button";
+import Markdown from "@/components/chat/Markdown";
 import { cn } from "@/lib/utils";
 
 interface MessageItemProps {
@@ -40,8 +41,12 @@ const MessageItem = ({
         </div>
       )}
       <div className={cn("chat-bubble relative", isUser ? "chat-bubble-user" : "chat-bubble-assistant")}>
-        <div className="whitespace-pre-wrap" data-testid="message-content">
-          {content}
+        <div data-testid="message-content">
+          {isUser ? (
+            <p className="whitespace-pre-wrap">{content}</p>
+          ) : (
+            <Markdown content={content} />
+          )}
           {streaming && <span className="inline-block w-2 h-4 ml-0.5 align-text-bottom bg-current animate-pulse" />}
         </div>
         {!isUser && citations && citations.length > 0 && !streaming && (
