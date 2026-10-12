@@ -33,7 +33,13 @@ cp Backend/.env.example Backend/.env   # renseigner les clés d'API et JWT_SECRE
 docker compose up --build
 ```
 
-Frontend : http://localhost:8080 — API : http://localhost:8000/docs (PostgreSQL inclus, migrations appliquées au démarrage).
+Frontend : http://localhost:8080 — API : http://localhost:8000/docs (PostgreSQL + pgvector inclus, migrations appliquées au démarrage).
+
+Indexer le corpus (PDF dans le volume `ragdata`, ex. `data/raw`) ou téléverser via `POST /api/v1/documents` (administrateur) :
+
+```bash
+docker compose exec api python -m scripts.ingest_corpus data/raw
+```
 
 ### Lancement manuel
 

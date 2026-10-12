@@ -59,3 +59,13 @@ def run_migrations() -> None:
     cfg = AlembicConfig(str(backend_dir / "alembic.ini"))
     cfg.set_main_option("script_location", str(backend_dir / "alembic"))
     command.upgrade(cfg, "head")
+
+
+POSTGRES_ONLY_TABLES = {"chunks"}
+
+
+def include_object(obj, name, type_, reflected, compare_to, dialect_name: str) -> bool:
+    """Alembic : ignorer les tables propres à PostgreSQL (pgvector) sur les autres bases."""
+    if dialect_name != "postgresql" and type_ == "table" and name in POSTGRES_ONLY_TABLES:
+        return False
+    return True

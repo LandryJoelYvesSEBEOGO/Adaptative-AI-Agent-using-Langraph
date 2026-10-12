@@ -22,22 +22,19 @@ jobs:
       - name: Installer les dépendances (sans les modèles locaux lourds)
         run: uv sync --frozen
       - name: Lint
-        run: uv run ruff check api config alembic tests
+        run: uv run ruff check api config src evaluation alembic tests
       - name: Format
-        run: uv run ruff format --check api config alembic tests
+        run: uv run ruff format --check api config src evaluation alembic tests
       - name: Typage
         run: uv run pyright
       - name: Tests
-        run: >
-          uv run pytest -q
-          tests/test_security.py tests/test_database.py tests/test_settings.py
-          tests/test_concurrency.py tests/test_rag_modules.py
+        run: uv run pytest -q
 
   backend-postgres:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: rag
           POSTGRES_PASSWORD: rag
@@ -59,8 +56,8 @@ jobs:
           enable-cache: true
           cache-dependency-glob: Backend/uv.lock
       - run: uv sync --frozen
-      - name: Tests de base de données sur PostgreSQL
-        run: uv run pytest -q tests/test_database.py tests/test_security.py
+      - name: Tests sur PostgreSQL (base, recherche hybride, ingestion, garde-fou de retrieval)
+        run: uv run pytest -q
 
   frontend:
     runs-on: ubuntu-latest

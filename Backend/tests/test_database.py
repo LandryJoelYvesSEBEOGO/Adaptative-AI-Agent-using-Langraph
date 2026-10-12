@@ -14,7 +14,7 @@ from alembic.migration import MigrationContext  # noqa: E402
 from sqlalchemy import inspect  # noqa: E402
 
 from alembic import command  # noqa: E402
-from api.database import Base, get_engine, run_migrations  # noqa: E402
+from api.database import Base, get_engine, include_object, run_migrations  # noqa: E402
 from api.services import conversation_service as conv  # noqa: E402
 from api.services import metrics_service as metrics  # noqa: E402
 from api.services.auth_service import (  # noqa: E402
@@ -44,7 +44,13 @@ def test_expected_tables_exist():
 def test_models_match_migrations():
     """Le schéma créé par Alembic doit être identique aux modèles ORM."""
     with get_engine().connect() as connection:
-        diff = compare_metadata(MigrationContext.configure(connection), Base.metadata)
+        context = MigrationContext.configure(
+            connection,
+            opts={
+                "include_object": lambda *a: include_object(*a, connection.dialect.name),
+            },
+        )
+        diff = compare_metadata(context, Base.metadata)
     assert diff == []
 
 

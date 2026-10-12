@@ -3,9 +3,11 @@
 import uuid
 from datetime import UTC, datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
     CheckConstraint,
+    Computed,
     DateTime,
     Float,
     ForeignKey,
@@ -15,9 +17,11 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from api.database import Base
+from config.settings import get_settings
 
 
 def new_id() -> str:
@@ -149,4 +153,44 @@ class Document(Base):
             "status IN ('pending', 'processing', 'ready', 'failed')", name="ck_documents_status"
         ),
         Index("ix_documents_company_year", "company", "fiscal_year"),
+    )
+
+
+class Chunk(Base):
+    """Passage indexé d'un document (PostgreSQL uniquement : pgvector + recherche plein texte).
+
+    La table n'est créée que sur PostgreSQL (migration 0002) ; sur SQLite elle n'existe pas.
+    """
+
+    __tablename__ = "chunks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), index=True
+    )
+    ordinal: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)
+    embedding_text: Mapped[str] = mapped_column(Text)  # contenu précédé de son contexte
+    section: Mapped[str | None] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(String(16), default="text")  # text | table
+    page_start: Mapped[int | None] = mapped_column(Integer)
+    page_end: Mapped[int | None] = mapped_column(Integer)
+    company: Mapped[str | None] = mapped_column(String(255), index=True)
+    fiscal_year: Mapped[int | None] = mapped_column(Integer, index=True)
+    doc_type: Mapped[str | None] = mapped_column(String(32), index=True)
+    embedding = mapped_column(Vector(get_settings().EMBEDDING_DIM), nullable=False)
+    tsv = mapped_column(
+        TSVECTOR, Computed("to_tsvector('english', embedding_text)", persisted=True)
+    )
+
+    __table_args__ = (
+        UniqueConstraint("document_id", "ordinal", name="uq_chunks_document_ordinal"),
+        Index("ix_chunks_tsv", "tsv", postgresql_using="gin"),
+        Index(
+            "ix_chunks_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )

@@ -7,7 +7,7 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1
 
 # Dépendances d'abord (couche mise en cache). `--extra ml` : reranker et modèles locaux.
 COPY pyproject.toml uv.lock ./
-ARG UV_EXTRAS="--extra ml"
+ARG UV_EXTRAS="--extra ml --extra ingest"
 RUN uv sync --frozen --no-dev --no-install-project ${UV_EXTRAS}
 
 COPY . .

@@ -1,11 +1,13 @@
 import json
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 from api.dependencies import get_current_user
 from api.models.chat import ChatQueryRequest, ChatQueryResponse, FeedbackRequest
-from api.services.chat_service import process_rag_query, process_rag_query_stream
+from api.services import chat_service
 from api.services.conversation_service import (
     add_feedback,
     add_message,
@@ -31,37 +33,22 @@ def _resolve_conversation(request: ChatQueryRequest, current_user: dict) -> str:
     return request.conversation_id
 
 
-@router.post("/query", response_model=ChatQueryResponse)
-def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_current_user)):
-    if not request.question or not request.question.strip():
-        raise HTTPException(status_code=400, detail="La question ne peut pas être vide")
-
-    # 1) conversation_id
-    conversation_id = _resolve_conversation(request, current_user)
-
-    # 2) sauver message user
-    add_message(
-        conversation_id=conversation_id,
-        role="user",
-        content=request.question.strip(),
-        citations=None,
-    )
-
-    # 3) exécuter RAG
-    result = process_rag_query(question=request.question, conversation_id=conversation_id)
-
-    # 4) sauver message assistant
-    add_message(
-        conversation_id=conversation_id,
-        role="assistant",
-        content=result.get("response", ""),
-        citations=result.get("citations", []),
-    )
-
+def _persist_outcome(
+    conversation_id: str, question: str, user_id: str, result: dict
+) -> Optional[str]:
+    """Enregistre la réponse (si réussie) et la mesure de la requête ; retourne l'id du message."""
+    message_id = None
+    if result.get("success"):
+        message_id = add_message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=result.get("response", ""),
+            citations=result.get("citations", []),
+        )["id"]
     record_request(
         conversation_id=conversation_id,
-        user_id=current_user.get("id"),
-        question=request.question.strip(),
+        user_id=user_id,
+        question=question,
         status="success" if result.get("success") else "error",
         error=result.get("error"),
         latencies=result.get("latencies"),
@@ -70,62 +57,58 @@ def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_curren
         answer_quality_score=result.get("answer_quality_score"),
         answer_quality_scores=result.get("answer_quality_scores"),
     )
+    return message_id
 
-    return ChatQueryResponse(**result)
+
+def _start_turn(request: ChatQueryRequest, current_user: dict) -> tuple[str, str]:
+    """Valide la question, résout la conversation et enregistre le message utilisateur."""
+    question = (request.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="La question ne peut pas être vide")
+    conversation_id = _resolve_conversation(request, current_user)
+    add_message(conversation_id, "user", question, None)
+    return conversation_id, question
+
+
+@router.post("/query", response_model=ChatQueryResponse)
+async def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_current_user)):
+    conversation_id, question = await run_in_threadpool(_start_turn, request, current_user)
+    result = await chat_service.answer(question, conversation_id)
+    message_id = await run_in_threadpool(
+        _persist_outcome, conversation_id, question, current_user["id"], result
+    )
+    return ChatQueryResponse(**result, message_id=message_id)
 
 
 @router.post("/query/stream")
-def query_rag_stream(request: ChatQueryRequest, current_user: dict = Depends(get_current_user)):
-    if not request.question or not request.question.strip():
-        raise HTTPException(status_code=400, detail="La question ne peut pas être vide")
+async def query_rag_stream(
+    request: ChatQueryRequest, current_user: dict = Depends(get_current_user)
+):
+    conversation_id, question = await run_in_threadpool(_start_turn, request, current_user)
 
-    # 1) conversation_id
-    conversation_id = _resolve_conversation(request, current_user)
-
-    # 2) sauver message user
-    add_message(conversation_id, "user", request.question.strip(), None)
-
-    def generate_stream():
-        full_response_chunks = []
-        citations_holder = {"items": []}
-
-        def on_complete(meta):
-            citations_holder["items"] = meta.get("citations", []) or []
-            record_request(
-                conversation_id=conversation_id,
-                user_id=current_user.get("id"),
-                question=request.question.strip(),
-                status="success" if meta.get("success") else "error",
-                error=meta.get("error"),
-                latencies=meta.get("latencies"),
-                docs_count=meta.get("num_documents"),
-                response_length=meta.get("response_length"),
-                answer_quality_score=meta.get("answer_quality_score"),
-                answer_quality_scores=meta.get("answer_quality_scores"),
+    async def event_stream():
+        async for event in chat_service.answer_stream(question, conversation_id):
+            if event["type"] == "token":
+                yield _sse({"chunk": event["text"]})
+                continue
+            result = event["result"]
+            message_id = await run_in_threadpool(
+                _persist_outcome, conversation_id, question, current_user["id"], result
             )
-
-        for chunk in process_rag_query_stream(
-            question=request.question, conversation_id=conversation_id, on_complete=on_complete
-        ):
-            full_response_chunks.append(chunk)
-            yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-
-        # 3) sauvegarder message assistant à la fin
-        full_response = "".join(full_response_chunks)
-        add_message(
-            conversation_id=conversation_id,
-            role="assistant",
-            content=full_response,
-            citations=citations_holder["items"],
-        )
-
-        # 4) envoyer les citations structurées au frontend
-        yield f"data: {json.dumps({'citations': citations_holder['items']})}\n\n"
-
+            if result["success"]:
+                yield _sse(
+                    {
+                        "citations": result["citations"],
+                        "message_id": message_id,
+                        "conversation_id": conversation_id,
+                    }
+                )
+            else:
+                yield _sse({"error": result["error"]})
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
-        generate_stream(),
+        event_stream(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -133,6 +116,10 @@ def query_rag_stream(request: ChatQueryRequest, current_user: dict = Depends(get
             "X-Accel-Buffering": "no",
         },
     )
+
+
+def _sse(payload: dict) -> str:
+    return f"data: {json.dumps(payload)}\n\n"
 
 
 @router.post("/feedback")

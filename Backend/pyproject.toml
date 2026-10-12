@@ -19,35 +19,32 @@ dependencies = [
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "psycopg[binary]>=3.2",
+    "pgvector>=0.3",
     # LangChain / LangGraph
-    "langchain>=0.3",
     "langchain-core>=0.3",
-    "langchain-community>=0.3",
     "langchain-groq>=0.2",
-    "langchain-nomic>=0.1",
-    "langchain-text-splitters>=0.3",
     "langgraph>=0.2",
-    "chromadb>=0.5",
     "tavily-python>=0.3",
-    "tqdm>=4.66",
+    "pypdf>=4.0",  # repli d'ingestion sans Docling
 ]
 
 [project.optional-dependencies]
-# Modèles locaux (reranker cross-encoder, métadonnées, embeddings) : lourds, exclus de la CI.
-# Ils sortiront du processus de l'API au lot 3.
+# Modèles locaux (reranker cross-encoder, embeddings Nomic) : lourds, exclus de la CI.
+# Inutiles avec EMBEDDING_PROVIDER=openai|cohere et RERANKER_PROVIDER=cohere|none.
 ml = [
-    "keybert>=0.8",
-    "spacy>=3.7",
-    "bertopic>=0.16",
-    "transformers>=4.35",
+    "langchain-nomic>=0.1",
     "sentence-transformers>=2.2",
-    "nltk>=3.8",
     "torch>=2.0",
 ]
+
+# Ingestion structurée des PDF (tableaux conservés). Nécessite le téléchargement de modèles.
+ingest = ["docling>=2.0"]
 
 [dependency-groups]
 dev = [
     "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "reportlab>=4.0",  # PDF de test (repli pypdf)
     "ruff>=0.6",
     "pyright>=1.1.380",
 ]
@@ -67,19 +64,19 @@ ignore = ["E501"]  # la longueur de ligne est laissée au formateur
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E402", "W291", "F841", "B905"]
-"api/services/chat_service.py" = ["E402"]  # supprimé au lot 2.4
 "api/main.py" = ["E402"]  # le patch bcrypt doit être importé en premier
 "alembic/versions/*" = ["E501", "I001", "W291", "W293"]
 "api/services/auth_service.py" = ["E402", "F403"]
 
 [tool.pyright]
-include = ["api", "config"]
+include = ["api", "config", "src", "evaluation"]
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+asyncio_mode = "auto"
 
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.File", "fastapi.Form"]

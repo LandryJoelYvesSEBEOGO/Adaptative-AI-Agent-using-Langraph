@@ -1,3 +1,8 @@
+> ⚠️ **Document historique.** Il décrit le pipeline *avant* le lot 3 (graphe LangGraph à 8-20 appels LLM,
+> ChromaDB + BM25, `Rag_model.py`). Le pipeline actuel est décrit dans `Backend/src/rag/pipeline.py` :
+> `analyze → retrieve (pgvector + plein texte, RRF, rerank) → [web_search] → generate`, un seul chemin
+> d'exécution pour les modes normal et streaming.
+
 # Architecture Détaillée du Système RAG avec Métriques Admin
 
 ## Table des Matières

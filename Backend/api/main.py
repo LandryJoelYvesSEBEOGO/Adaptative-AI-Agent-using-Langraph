@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 
 from api.database import run_migrations
 from api.middleware import log_requests, setup_cors
-from api.routes import admin, auth, chat, conversation
+from api.routes import admin, auth, chat, conversation, documents
 from api.services.auth_service import seed_initial_users
 from config.settings import get_settings
 
@@ -97,6 +97,7 @@ app.include_router(auth.router)
 app.include_router(chat.router)  # Inclut aussi /feedback
 app.include_router(admin.router)
 app.include_router(conversation.router)
+app.include_router(documents.router)
 
 
 @app.get("/")

@@ -156,16 +156,16 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L2.6** Supprimer le code dupliqué (`metrics_service.py`) et le système de métriques JSONL redondant.
 - [x] **L2.7** `docker compose` (api, postgres, frontend) + CI GitHub Actions (lint, typage, tests, build).
 
-### Lot 3 — Qualité du RAG *(1 à 2 semaines)*
+### Lot 3 — Qualité du RAG *(code livré ; mesures qualité à exécuter)*
 
-- [ ] **L3.1** Établir une **mesure de référence** sur le jeu FinanceBench (exactitude, fidélité, latence, coût) avant toute modification.
-- [ ] **L3.2** Ingestion Docling avec conservation des tableaux, chunking par sections, métadonnées (société, année, type de document, page).
-- [ ] **L3.3** Recherche hybride pgvector + full-text avec fusion RRF ; reranker hébergé avec seuil de score.
-- [ ] **L3.4** Graphe simplifié : réécriture (seulement si historique) → recherche hybride → rerank → génération ; recherche web uniquement si les scores de rerank sont sous le seuil. Suppression du grading LLM par document. *Acceptation : ≤ 3 appels LLM par question dans le cas nominal, score d'évaluation ≥ référence.*
-- [ ] **L3.5** Vrai streaming token par token via le graphe (`astream` / `stream_mode="messages"`), un seul chemin d'exécution.
-- [ ] **L3.6** Sorties structurées (Pydantic) pour toutes les étapes qui renvoient du JSON.
-- [ ] **L3.7** Endpoint d'upload + ingestion asynchrone + statut par document *(si option B retenue)*.
-- [ ] **L3.8** Évaluation automatique en CI sur un sous-ensemble du jeu de référence.
+- [~] **L3.1** Établir une **mesure de référence** sur le jeu FinanceBench (exactitude, fidélité, latence, coût) avant toute modification. *Outillage livré (`Backend/evaluation/`) ; la mesure elle-même reste à exécuter avec vos clés et le corpus (voir `Backend/evaluation/README.md`). Le coût en tokens n'est pas mesuré.*
+- [x] **L3.2** Ingestion Docling avec conservation des tableaux, chunking par sections, métadonnées (société, année, type de document, page). *Parsing Docling non exécuté ici (modèles non téléchargeables) ; chunking, métadonnées et repli pypdf testés.*
+- [x] **L3.3** Recherche hybride pgvector + full-text avec fusion RRF ; reranker hébergé avec seuil de score. *Recherche validée sur PostgreSQL 16 + pgvector ; clients Cohere / OpenAI testés avec HTTP simulé (pas d'appel réel). Le seuil `RERANK_MIN_SCORE` est à calibrer.*
+- [x] **L3.4** Graphe simplifié : réécriture (seulement si historique) → recherche hybride → rerank → génération ; recherche web uniquement si les scores de rerank sont sous le seuil. Suppression du grading LLM par document. *Acceptation : ≤ 3 appels LLM par question dans le cas nominal (vérifié : 1 appel, 2 avec historique), score d'évaluation ≥ référence (**non vérifié** : nécessite la mesure L3.1).*
+- [x] **L3.5** Vrai streaming token par token via le graphe (`astream` / `stream_mode="messages"`), un seul chemin d'exécution.
+- [x] **L3.6** Sorties structurées (Pydantic) pour toutes les étapes qui renvoient du JSON.
+- [x] **L3.7** Endpoint d'upload + ingestion asynchrone + statut par document *(si option B retenue)*. *Réalisé de façon neutre vis-à-vis de la décision produit : upload réservé aux administrateurs (corpus partagé), `owner_id` conservé pour l'option B ; CLI `scripts/ingest_corpus.py` pour l'option A. Tâche de fond FastAPI (`BackgroundTasks`), pas encore arq.*
+- [x] **L3.8** Évaluation automatique en CI sur un sous-ensemble du jeu de référence. *Garde-fou de retrieval à chaque PR (testé, y compris par mutation) ; workflow d'évaluation complète lancé à la demande (YAML validé, **jamais exécuté** : nécessite vos secrets).*
 
 ### Lot 4 — Frontend *(~1 semaine)*
 

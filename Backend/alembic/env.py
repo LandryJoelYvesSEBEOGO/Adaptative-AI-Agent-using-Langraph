@@ -1,6 +1,6 @@
 from alembic import context
 from api import db_models  # noqa: F401  (enregistre les modèles dans Base.metadata)
-from api.database import Base, get_engine
+from api.database import Base, get_engine, include_object
 from config.settings import get_settings
 
 target_metadata = Base.metadata
@@ -23,6 +23,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             render_as_batch=connection.dialect.name == "sqlite",
+            include_object=lambda *args: include_object(*args, connection.dialect.name),
         )
         with context.begin_transaction():
             context.run_migrations()
