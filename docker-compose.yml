@@ -32,6 +32,23 @@ services:
       # Index vectoriel et corpus (hors image)
       - ragdata:/app/data
 
+  # Sauvegarde quotidienne (pg_dump) dans le volume `backups`, 14 jours conservés.
+  # À lancer avec : docker compose --profile backup up -d
+  backup:
+    image: pgvector/pgvector:pg16
+    profiles: ["backup"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      BACKUP_URL: postgresql://rag:${POSTGRES_PASSWORD:-rag}@postgres:5432/rag
+      BACKUP_DIR: /backups
+      RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ./Backend/scripts:/scripts:ro
+      - backups:/backups
+    entrypoint: ["sh", "-c", "while true; do sh /scripts/backup_db.sh || true; sleep 86400; done"]
+
   frontend:
     build: ./Frontend
     depends_on:
@@ -42,3 +59,4 @@ services:
 volumes:
   pgdata:
   ragdata:
+  backups:

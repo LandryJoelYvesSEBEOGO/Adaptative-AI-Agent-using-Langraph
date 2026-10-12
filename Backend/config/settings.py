@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 
     # --- Secrets et clés d'API (jamais de valeur par défaut) ---
     JWT_SECRET_KEY: str = ""
+    # Anciennes clés (séparées par des virgules) acceptées en vérification seulement : permet de faire
+    # tourner le secret sans déconnecter tout le monde (voir docs/EXPLOITATION.md)
+    JWT_SECRET_KEY_PREVIOUS: str = ""
     GROQ_API_KEY: str | None = None  # clé principale
     GROQ_API_KEYS_STR: str = Field(default="", validation_alias="GROQ_API_KEYS")
     TAVILY_API_KEY: str | None = None
@@ -130,6 +133,10 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_to_none(cls, value):
         return value or None
+
+    @property
+    def jwt_previous_keys(self) -> list[str]:
+        return [k.strip() for k in self.JWT_SECRET_KEY_PREVIOUS.split(",") if k.strip()]
 
     @property
     def cors_origins(self) -> list[str]:
