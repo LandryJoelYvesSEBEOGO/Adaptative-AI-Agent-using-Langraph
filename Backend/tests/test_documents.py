@@ -90,6 +90,7 @@ def upload(client, headers, name, content, **fields):
 
 def test_documents_require_admin(client, user):
     pdf = make_pdf(["hello"])
+    client.cookies.clear()  # le client conserve les cookies de session des fixtures
     assert client.get("/api/v1/documents").status_code in (401, 403)
     assert upload(client, user, "ACME_2020_10K.pdf", pdf).status_code == 403
     assert client.get("/api/v1/documents", headers=user).status_code == 403
@@ -191,3 +192,18 @@ class TestIngestionEndToEnd:
 
 def test_engine_dialect_sanity():
     assert get_engine().dialect.name in {"sqlite", "postgresql"}
+
+
+def test_any_authenticated_user_can_read_the_source_pdf_but_not_manage_documents(
+    client, admin, user
+):
+    pdf = make_pdf(["Item 7. Liquidity", "Capex was 5 million."])
+    doc_id = upload(client, admin, "FILEVIEW_2021_10K.pdf", pdf).json()["id"]
+
+    client.cookies.clear()
+    assert client.get(f"/api/v1/documents/{doc_id}/file").status_code in (401, 403)
+    r = client.get(f"/api/v1/documents/{doc_id}/file", headers=user)
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf"
+    assert r.content.startswith(b"%PDF-") and "inline" in r.headers["content-disposition"]
+    assert client.get(f"/api/v1/documents/{doc_id}", headers=user).status_code == 403
+    assert client.get("/api/v1/documents/unknown/file", headers=user).status_code == 404
