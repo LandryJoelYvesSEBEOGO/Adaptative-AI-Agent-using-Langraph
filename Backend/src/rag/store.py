@@ -156,3 +156,19 @@ def hybrid_search(
             for chunk_id, score in fused
             if chunk_id in by_id
         ]
+
+
+def list_companies() -> list[str]:
+    """Sociétés ayant au moins un document prêt (sert à détecter la société d'une question)."""
+    if get_engine().dialect.name != "postgresql":
+        return []
+    with session_scope() as db:
+        companies = list(
+            db.scalars(
+                select(Chunk.company)
+                .where(Chunk.company.is_not(None))
+                .distinct()
+                .order_by(Chunk.company)
+            )
+        )
+        return [c for c in companies if c]

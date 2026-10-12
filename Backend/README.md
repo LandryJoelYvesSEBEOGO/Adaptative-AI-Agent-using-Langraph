@@ -36,8 +36,9 @@ uv run uvicorn api.main:app --reload --port 8000
 | `api/models/` | Schémas Pydantic des requêtes et réponses |
 | `api/database.py`, `api/db_models.py`, `alembic/` | SQLAlchemy 2 (PostgreSQL ou SQLite) et migrations Alembic |
 | `config/Config.py` | Paramètres du pipeline (modèles, reranker, hybrid search, grading…) |
-| `src/rag/` | Ingestion (`Data_processing.py`), prompts, et moteur RAG découpé : `retrieval/`, `generation/`, `grading/`, `routing.py`, `graph.py` (LangGraph), `answer.py` ; `Rag_model.py` reste une façade de compatibilité |
-| `src/core/` | Logs, métriques, retry / circuit breaker, fallback, rotation des clés Groq |
+| `src/rag/` | Pipeline RAG : `pipeline.py` (graphe LangGraph `analyze → retrieve → web_search → generate`, normal et streaming), `store.py` (pgvector + plein texte, fusion RRF), `embeddings.py`, `rerankers.py`, `search.py`, `query_analysis.py` |
+| `src/ingestion/` | Ingestion des PDF : parsing Docling, chunking par sections, métadonnées |
+| `evaluation/` | Évaluation FinanceBench (voir `evaluation/README.md`) |
 | `scripts/` | Utilitaires lancés à la main |
 | `tests/` | Tests |
 | `data/` | Données locales : PDF sources (`raw/`), index Chroma, cache BM25, base SQLite, logs |

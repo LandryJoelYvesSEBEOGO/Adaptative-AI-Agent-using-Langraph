@@ -19,6 +19,7 @@ class ChatQueryResponse(BaseModel):
     response: str
     citations: List[Citation] = []
     conversation_id: str
+    message_id: Optional[str] = None  # id du message assistant (pour le feedback)
     latency: Optional[float] = None
     success: bool = True
     error: Optional[str] = None

@@ -55,7 +55,7 @@ class CohereReranker:
 
 class LocalCrossEncoderReranker:
     def __init__(self, model_name: str):
-        from sentence_transformers import CrossEncoder
+        from sentence_transformers import CrossEncoder  # type: ignore[import-not-found]
 
         self._model = CrossEncoder(model_name)
 
@@ -63,8 +63,10 @@ class LocalCrossEncoderReranker:
         if not texts:
             return []
         logits = self._model.predict([(query, text) for text in texts])
-        scored = [(i, 1 / (1 + math.exp(-float(x)))) for i, x in enumerate(logits)]
-        return sorted(scored, key=lambda pair: -pair[1])[:top_n]
+        scored: list[tuple[int, float | None]] = [
+            (i, 1 / (1 + math.exp(-float(x)))) for i, x in enumerate(logits)
+        ]
+        return sorted(scored, key=lambda pair: -(pair[1] or 0.0))[:top_n]
 
 
 @lru_cache

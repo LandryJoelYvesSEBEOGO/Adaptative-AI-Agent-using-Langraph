@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 class Verdict(BaseModel):
@@ -48,7 +48,7 @@ class GroqJudge:
         llm = ChatGroq(
             model=model or settings.GROQ_model,
             temperature=0,
-            api_key=settings.GROQ_API_KEYS[0] if settings.GROQ_API_KEYS else None,
+            api_key=SecretStr(settings.GROQ_API_KEYS[0]) if settings.GROQ_API_KEYS else None,
         )
         self._llm = llm.with_structured_output(Verdict)
 

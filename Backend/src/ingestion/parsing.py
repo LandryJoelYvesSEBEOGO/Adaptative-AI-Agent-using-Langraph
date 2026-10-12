@@ -14,7 +14,7 @@ def parse_pdf(path: str | Path, parser: str = "docling") -> list[Page]:
 
 
 def _parse_docling(path: Path) -> list[Page]:
-    from docling.document_converter import DocumentConverter
+    from docling.document_converter import DocumentConverter  # type: ignore[import-not-found]
 
     document = DocumentConverter().convert(str(path)).document
     pages = []
