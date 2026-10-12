@@ -80,3 +80,40 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  e2e:
+    # Parcours navigateur : connexion, chat en streaming, sources + PDF, Stop, administration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - name: Dépendances du backend
+        working-directory: Backend
+        run: uv sync --frozen
+      - name: Dépendances du frontend
+        working-directory: Frontend
+        run: npm ci
+      - name: Navigateur Playwright
+        working-directory: Frontend
+        run: npx playwright install --with-deps chromium
+      - name: Build du frontend
+        working-directory: Frontend
+        run: npm run build
+      - name: Tests de bout en bout
+        working-directory: Frontend
+        env:
+          JWT_SECRET_KEY: ci-secret-key-0123456789-0123456789-0123456789
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: Frontend/playwright-report

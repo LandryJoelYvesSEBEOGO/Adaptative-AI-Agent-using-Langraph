@@ -31,18 +31,19 @@ const Login = () => {
   const register = useRegister();
   const pending = login.isPending || register.isPending;
 
-  // Déjà connecté : retour à l'espace de l'utilisateur
-  if (session) return <Navigate to={homeFor(session)} replace />;
+  // Page demandée avant la redirection vers /login (ProtectedRoute)
+  const requested = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+  const destination = (user: User) => (requested && requested !== "/login" ? requested : homeFor(user));
+
+  // Déjà connecté (ou connexion à l'instant) : on rejoint la page demandée, sinon son espace
+  if (session) return <Navigate to={destination(session)} replace />;
 
   const switchMode = (next: Mode) => {
     setError(null);
     setParams(next === "register" ? { mode: "register" } : {});
   };
 
-  const onSuccess = (user: User) => {
-    const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-    navigate(from && from !== "/login" ? from : homeFor(user), { replace: true });
-  };
+  const onSuccess = (user: User) => navigate(destination(user), { replace: true });
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
