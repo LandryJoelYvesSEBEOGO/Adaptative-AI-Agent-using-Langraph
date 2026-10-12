@@ -70,7 +70,7 @@ METADATA_ENRICHMENT_ENABLED = True  # Activer l'enrichissement
 
 ## Utilisation
 
-Lors de la reconstruction des index (`rebuild_index.py`), les modèles locaux seront utilisés automatiquement si `METADATA_USE_LOCAL_MODELS = True`.
+Lors de la reconstruction des index (`python scripts/rebuild_index.py`), les modèles locaux seront utilisés automatiquement si `METADATA_USE_LOCAL_MODELS = True`.
 
 ## Avantages
 

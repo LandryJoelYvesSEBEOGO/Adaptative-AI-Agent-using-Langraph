@@ -101,7 +101,7 @@ Un script de test est disponible pour vérifier le fonctionnement :
 
 ```bash
 cd Backend
-python test_groq_key_rotation.py
+python tests/test_groq_key_rotation.py
 ```
 
 Le script teste :
