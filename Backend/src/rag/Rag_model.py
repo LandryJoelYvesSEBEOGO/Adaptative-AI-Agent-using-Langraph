@@ -55,6 +55,7 @@ logger = get_logger()
 metrics = get_metrics_collector()
 # Load environment variables
 load_dotenv()
+Config.export_runtime_env()
 
 # Gestionnaire de clés API Groq avec rotation automatique
 groq_key_manager = get_groq_key_manager()

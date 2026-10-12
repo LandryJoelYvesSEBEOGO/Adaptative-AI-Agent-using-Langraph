@@ -122,7 +122,7 @@ def _get_summarization_model():
             
             # Configuration du device (GPU/CPU)
             # Forcer l'utilisation du GPU si configuré
-            if Config.FORCE_GPU or (hasattr(Config, 'DEVICE_PREFERENCE') and Config.DEVICE_PREFERENCE == "cuda"):
+            if Config.DEVICE_PREFERENCE == "cuda":
                 device = 0  # GPU
                 if torch.cuda.is_available():
                     print(f"[INFO] Utilisation du GPU pour le modèle de résumé: {torch.cuda.get_device_name(0)}")

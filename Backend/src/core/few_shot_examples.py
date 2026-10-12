@@ -18,7 +18,7 @@ def get_embeddings():
         device = "cpu"
         try:
             import torch
-            if Config.FORCE_GPU or Config.DEVICE_PREFERENCE == "cuda":
+            if Config.DEVICE_PREFERENCE == "cuda":
                 device = "cuda"
                 if torch.cuda.is_available():
                     print(f"[INFO] CUDA détecté pour few-shot embeddings: {torch.cuda.get_device_name(0)}")
@@ -28,7 +28,7 @@ def get_embeddings():
                 if torch.cuda.is_available():
                     device = "cuda"
         except Exception:
-            if Config.FORCE_GPU or Config.DEVICE_PREFERENCE == "cuda":
+            if Config.DEVICE_PREFERENCE == "cuda":
                 device = "cuda"
         
         _embeddings = NomicEmbeddings(

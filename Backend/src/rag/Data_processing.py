@@ -576,7 +576,7 @@ def get_or_create_chroma_db(doc_splits: List, persist_directory: str = CHROMA_DB
     device = "cpu"
     try:
         import torch
-        if Config.FORCE_GPU or Config.DEVICE_PREFERENCE == "cuda":
+        if Config.DEVICE_PREFERENCE == "cuda":
             device = "cuda"
             if torch.cuda.is_available():
                 print(f"[INFO] CUDA détecté pour ChromaDB: {torch.cuda.get_device_name(0)}")
@@ -592,7 +592,7 @@ def get_or_create_chroma_db(doc_splits: List, persist_directory: str = CHROMA_DB
         else:
             print(f"[INFO] Utilisation du CPU (configuré dans Config.DEVICE_PREFERENCE)")
     except Exception as e:
-        if Config.FORCE_GPU or Config.DEVICE_PREFERENCE == "cuda":
+        if Config.DEVICE_PREFERENCE == "cuda":
             device = "cuda"
             print(f"[WARNING] Erreur détection CUDA: {e}, mais utilisation forcée du GPU")
         else:
@@ -729,7 +729,7 @@ def get_retriever(k: int = 3, use_hybrid: bool = None):
         device = "cpu"
         try:
             import torch
-            if Config.FORCE_GPU or Config.DEVICE_PREFERENCE == "cuda":
+            if Config.DEVICE_PREFERENCE == "cuda":
                 device = "cuda"
                 if torch.cuda.is_available():
                     print(f"[INFO] CUDA détecté: {torch.cuda.get_device_name(0)}")
@@ -745,13 +745,13 @@ def get_retriever(k: int = 3, use_hybrid: bool = None):
             else:
                 print(f"[INFO] Utilisation du CPU (configuré dans Config.DEVICE_PREFERENCE)")
         except ImportError:
-            if Config.FORCE_GPU or Config.DEVICE_PREFERENCE == "cuda":
+            if Config.DEVICE_PREFERENCE == "cuda":
                 device = "cuda"
                 print("[WARNING] PyTorch non disponible, mais tentative d'utilisation du GPU")
             else:
                 print("[INFO] PyTorch non disponible, utilisation du CPU")
         except Exception as e:
-            if Config.FORCE_GPU or Config.DEVICE_PREFERENCE == "cuda":
+            if Config.DEVICE_PREFERENCE == "cuda":
                 device = "cuda"
                 print(f"[WARNING] Erreur détection CUDA: {str(e)}, mais tentative d'utilisation du GPU")
             else:
