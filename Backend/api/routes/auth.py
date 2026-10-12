@@ -50,8 +50,7 @@ async def register(request: RegisterRequest):
     user = create_user(
         email=request.email,
         password=request.password,
-        name=request.name,
-        role=request.role
+        name=request.name
     )
     
     if not user:

@@ -72,6 +72,21 @@ def init_db() -> None:
         """
     )
 
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS feedback (
+            id TEXT PRIMARY KEY,
+            message_id TEXT NOT NULL,
+            user_email TEXT NOT NULL,
+            feedback_type TEXT NOT NULL CHECK(feedback_type IN ('thumbs_up', 'thumbs_down')),
+            comment TEXT,
+            created_at TEXT NOT NULL,
+            UNIQUE(message_id, user_email),
+            FOREIGN KEY(message_id) REFERENCES messages(id) ON DELETE CASCADE
+        )
+        """
+    )
+
     cur.execute("CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_email)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_rag_requests_created_at ON rag_requests(created_at)")

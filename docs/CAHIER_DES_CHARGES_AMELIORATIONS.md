@@ -136,15 +136,15 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L0.5** README racine + README backend et frontend à jour ; `.env.example` alignés sur les variables réellement lues.
 - [ ] **L0.6** Commit dédié au nettoyage, séparé du travail en cours.
 
-### Lot 1 — Sécurité *(1 à 2 jours)*
+### Lot 1 — Sécurité *(en cours — reste L1.1, action manuelle)*
 
 - [ ] **L1.1** Révoquer les clés Groq et Tavily exposées, en générer de nouvelles, purger l'historique (`git filter-repo`) avant tout push. *Acceptation : aucune clé dans `git log -p`.*
-- [ ] **L1.2** Charger le secret JWT depuis la bonne variable ; refuser de démarrer si absent. *Acceptation : l'API ne démarre pas sans secret.*
-- [ ] **L1.3** Protéger toutes les routes admin par `require_admin`. *Acceptation : 401/403 sans token admin.*
-- [ ] **L1.4** Retirer `role` de l'inscription (rôle `user` forcé côté serveur).
-- [ ] **L1.5** Vérifier la propriété du `conversation_id` sur toutes les routes de chat. *Acceptation : 404 sur la conversation d'un autre utilisateur.*
-- [ ] **L1.6** Ne plus renvoyer le détail des exceptions au client ; authentifier et persister `/feedback`.
-- [ ] **L1.7** Corriger le prompt du routeur pour le corpus actuel (R1).
+- [x] **L1.2** Charger le secret JWT depuis la bonne variable ; refuser de démarrer si absent. *Acceptation : l'API ne démarre pas sans secret.*
+- [x] **L1.3** Protéger toutes les routes admin par `require_admin`. *Acceptation : 401/403 sans token admin.*
+- [x] **L1.4** Retirer `role` de l'inscription (rôle `user` forcé côté serveur).
+- [x] **L1.5** Vérifier la propriété du `conversation_id` sur toutes les routes de chat. *Acceptation : 404 sur la conversation d'un autre utilisateur.*
+- [x] **L1.6** Ne plus renvoyer le détail des exceptions au client ; authentifier et persister `/feedback`.
+- [x] **L1.7** Corriger le prompt du routeur pour le corpus actuel (R1).
 
 ### Lot 2 — Fondations backend *(~1 semaine)*
 

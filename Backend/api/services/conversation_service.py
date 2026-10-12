@@ -143,3 +143,44 @@ def list_messages(conversation_id: str) -> List[Dict]:
             }
         )
     return messages
+
+
+
+def add_feedback(
+    message_id: str,
+    user_email: str,
+    feedback_type: str,
+    comment: Optional[str] = None,
+) -> bool:
+    """Enregistre (ou remplace) le feedback d'un utilisateur sur un message de SA conversation.
+
+    Retourne False si le message n'existe pas ou n'appartient pas à l'utilisateur.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT 1 FROM messages m
+        JOIN conversations c ON c.id = m.conversation_id
+        WHERE m.id = ? AND c.user_email = ?
+        """,
+        (message_id, user_email),
+    )
+    if not cur.fetchone():
+        conn.close()
+        return False
+
+    cur.execute(
+        """
+        INSERT INTO feedback (id, message_id, user_email, feedback_type, comment, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(message_id, user_email) DO UPDATE SET
+            feedback_type = excluded.feedback_type,
+            comment = excluded.comment,
+            created_at = excluded.created_at
+        """,
+        (str(uuid.uuid4()), message_id, user_email, feedback_type, comment, _now()),
+    )
+    conn.commit()
+    conn.close()
+    return True

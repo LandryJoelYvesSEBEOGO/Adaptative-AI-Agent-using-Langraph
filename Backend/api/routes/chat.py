@@ -3,11 +3,27 @@ from fastapi.responses import StreamingResponse
 from api.models.chat import ChatQueryRequest, ChatQueryResponse, FeedbackRequest
 from api.services.chat_service import process_rag_query, process_rag_query_stream
 from api.dependencies import get_current_user
-from api.services.conversation_service import create_conversation, add_message
+from api.services.conversation_service import (
+    create_conversation,
+    add_message,
+    get_conversation,
+    add_feedback,
+)
 from api.services.metrics_service import record_request
 import json
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
+
+
+def _resolve_conversation(request: ChatQueryRequest, current_user: dict) -> str:
+    """Retourne l'id de conversation, en vérifiant qu'elle appartient à l'utilisateur."""
+    if not request.conversation_id:
+        conv = create_conversation(current_user["email"], title=request.question[:60])
+        return conv["id"]
+    if not get_conversation(request.conversation_id, current_user["email"]):
+        raise HTTPException(status_code=404, detail="Conversation introuvable")
+    return request.conversation_id
+
 
 @router.post("/query", response_model=ChatQueryResponse)
 async def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_current_user)):
@@ -15,10 +31,7 @@ async def query_rag(request: ChatQueryRequest, current_user: dict = Depends(get_
         raise HTTPException(status_code=400, detail="La question ne peut pas être vide")
 
     # 1) conversation_id
-    conversation_id = request.conversation_id
-    if not conversation_id:
-        conv = create_conversation(current_user["email"], title=request.question[:60])
-        conversation_id = conv["id"]
+    conversation_id = _resolve_conversation(request, current_user)
 
     # 2) sauver message user
     add_message(
@@ -63,10 +76,7 @@ async def query_rag_stream(request: ChatQueryRequest, current_user: dict = Depen
         raise HTTPException(status_code=400, detail="La question ne peut pas être vide")
 
     # 1) conversation_id
-    conversation_id = request.conversation_id
-    if not conversation_id:
-        conv = create_conversation(current_user["email"], title=request.question[:60])
-        conversation_id = conv["id"]
+    conversation_id = _resolve_conversation(request, current_user)
 
     # 2) sauver message user
     add_message(conversation_id, "user", request.question.strip(), None)
@@ -121,17 +131,26 @@ async def query_rag_stream(request: ChatQueryRequest, current_user: dict = Depen
             "X-Accel-Buffering": "no"
         }
     )
+
 @router.post("/feedback")
-async def submit_feedback(request: FeedbackRequest):
+async def submit_feedback(request: FeedbackRequest, current_user: dict = Depends(get_current_user)):
     """
     Enregistre le feedback utilisateur (thumbs up/down).
     """
-    # TODO: Enregistrer le feedback dans une base de données
-    # Pour l'instant, on retourne juste une confirmation
-    
+    if request.feedback_type not in ("thumbs_up", "thumbs_down"):
+        raise HTTPException(status_code=400, detail="feedback_type invalide")
+
+    if not add_feedback(
+        message_id=request.message_id,
+        user_email=current_user["email"],
+        feedback_type=request.feedback_type,
+        comment=request.comment,
+    ):
+        raise HTTPException(status_code=404, detail="Message introuvable")
+
     return {
         "success": True,
         "message": "Feedback enregistré avec succès",
         "message_id": request.message_id,
-        "feedback_type": request.feedback_type
+        "feedback_type": request.feedback_type,
     }

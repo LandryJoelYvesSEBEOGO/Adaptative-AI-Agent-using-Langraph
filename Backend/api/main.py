@@ -61,7 +61,6 @@ async def global_exception_handler(request: Request, exc: Exception):
             content={
                 "success": False,
                 "error": exc.detail,
-                "type": error_type,
                 "path": path,
             }
         )
@@ -72,8 +71,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={
             "success": False,
             "error": "Erreur serveur interne",
-            "detail": error_message,
-            "type": error_type,
             "path": path,
         }
     )
