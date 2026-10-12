@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Brain, 
@@ -6,8 +6,6 @@ import {
   AlertCircle, 
   ArrowRight, 
   User, 
-  Globe, 
-  Bot,
   AlertTriangle,
   Clock,
   ShieldAlert,
@@ -99,7 +97,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-[#EAEAEA] relative">
       {/* Background effects */}
-      <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-gradient-to-b from-white/60 to-transparent opacity-50 blur-3xl pointer-events-none rounded-full translate-x-1/3 -translate-y-1/3"></div>
+      <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-linear-to-b from-white/60 to-transparent opacity-50 blur-3xl pointer-events-none rounded-full translate-x-1/3 -translate-y-1/3"></div>
 
       {/* Auth Modal (Login/Register) */}
       {isAuthModalOpen && (
@@ -113,7 +111,7 @@ const Index = () => {
               setName("");
               setRole("user");
             }}
-            className="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm transition-opacity"
+            className="absolute inset-0 bg-neutral-900/60 backdrop-blur-xs transition-opacity"
           ></div>
           <Card className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative z-10">
             <button
@@ -193,7 +191,7 @@ const Index = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
+                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
                     placeholder="admin@rag-system.io"
                   />
                 </div>
@@ -206,7 +204,7 @@ const Index = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
+                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
                     placeholder="••••••••"
                   />
                 </div>
@@ -236,7 +234,7 @@ const Index = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
+                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
                     placeholder="Jean Dupont"
                   />
                 </div>
@@ -249,7 +247,7 @@ const Index = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
+                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
                     placeholder="jean.dupont@example.com"
                   />
                 </div>
@@ -263,7 +261,7 @@ const Index = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={4}
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
+                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
                     placeholder="••••••••"
                   />
                   <p className="text-xs text-neutral-500 mt-1">Minimum 4 caractères</p>
@@ -395,7 +393,7 @@ const Index = () => {
               </div>
               <h1 className="md:text-8xl lg:text-9xl leading-[0.85] uppercase text-6xl font-oswald font-medium text-neutral-900 tracking-tight pt-8 pb-6">
                 Intelligence pour l'ère de la
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-neutral-600 to-neutral-900 block">
+                <span className="bg-clip-text text-transparent bg-linear-to-r from-neutral-600 to-neutral-900 block">
                   Génération Augmentée
                 </span>
               </h1>
@@ -403,11 +401,11 @@ const Index = () => {
 
             <div className="lg:col-span-5 group h-full mt-1 relative">
               <div className="absolute inset-0 bg-neutral-900 rounded-2xl rotate-3 opacity-10 group-hover:rotate-6 transition-transform duration-500"></div>
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl h-[27.5rem] lg:h-[34.375rem] w-full bg-gradient-to-br from-blue-500 to-purple-600">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl h-[27.5rem] lg:h-[34.375rem] w-full bg-linear-to-br from-blue-500 to-purple-600">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Brain className="w-48 h-48 text-white opacity-20" />
                 </div>
-                <div className="bg-gradient-to-t from-neutral-900/40 to-transparent absolute top-0 right-0 bottom-0 left-0"></div>
+                <div className="bg-linear-to-t from-neutral-900/40 to-transparent absolute top-0 right-0 bottom-0 left-0"></div>
                 <div className="absolute bottom-6 left-6 right-6 p-4 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 text-white">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[0.65rem] uppercase tracking-widest">
@@ -440,7 +438,7 @@ const Index = () => {
               </div>
             </div>
 
-            <div className="w-full lg:w-5/12 ml-auto overflow-hidden bg-neutral-950 border-neutral-200 border rounded-2xl pt-6 pr-6 pl-6 relative shadow-sm">
+            <div className="w-full lg:w-5/12 ml-auto overflow-hidden bg-neutral-950 border-neutral-200 border rounded-2xl pt-6 pr-6 pl-6 relative shadow-xs">
               <div className="grid grid-cols-2 gap-4">
                 <Card className="bg-gray-50 border-neutral-100">
                   <CardContent className="pt-4">

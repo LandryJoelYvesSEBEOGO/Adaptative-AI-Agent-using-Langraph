@@ -8,7 +8,6 @@ import {
   ThumbsUp,
   ThumbsDown,
   Copy,
-  RotateCcw,
   Menu,
   LogOut,
   Settings,
@@ -325,12 +324,12 @@ const Chat = () => {
           }}
         />
       </div>
-      <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-gradient-to-b from-primary/10 to-transparent opacity-50 dark:opacity-30 blur-3xl pointer-events-none rounded-full translate-x-1/4 -translate-y-1/4" />
+      <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-linear-to-b from-primary/10 to-transparent opacity-50 dark:opacity-30 blur-3xl pointer-events-none rounded-full translate-x-1/4 -translate-y-1/4" />
       
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-background/80 backdrop-blur-xs z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -521,7 +520,7 @@ const Chat = () => {
                   >
                     {/* Subtle gradient effect for assistant messages */}
                     {message.role === "assistant" && (
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     )}
                     <div className="whitespace-pre-wrap">
                       {message.role === "assistant"
@@ -587,7 +586,7 @@ const Chat = () => {
         <div className="border-t border-border bg-background/80 backdrop-blur-xl sticky bottom-0 z-10">
           <div className="max-w-3xl mx-auto p-4">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-linear-to-t from-background to-transparent pointer-events-none" />
               <Textarea
                 ref={textareaRef}
                 value={input}

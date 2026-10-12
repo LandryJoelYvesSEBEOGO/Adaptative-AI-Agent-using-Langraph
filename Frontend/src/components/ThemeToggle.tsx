@@ -41,7 +41,7 @@ const ThemeToggle = ({ variant = "default", className }: ThemeToggleProps) => {
             "text-[0.65rem] px-2 py-0.5 rounded-full transition-all",
             isDark
               ? "text-neutral-500"
-              : "bg-white text-neutral-900 shadow-sm"
+              : "bg-white text-neutral-900 shadow-xs"
           )}
         >
           OFF
@@ -50,7 +50,7 @@ const ThemeToggle = ({ variant = "default", className }: ThemeToggleProps) => {
           className={cn(
             "text-[0.65rem] px-2 py-0.5 rounded-full transition-all",
             isDark
-              ? "bg-white text-neutral-900 shadow-sm"
+              ? "bg-white text-neutral-900 shadow-xs"
               : "text-neutral-500"
           )}
         >

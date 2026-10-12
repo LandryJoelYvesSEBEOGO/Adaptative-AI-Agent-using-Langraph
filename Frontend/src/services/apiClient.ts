@@ -111,10 +111,10 @@ export async function apiRequest<T>(
       : `${API_BASE_URL}${endpoint}`;
 
     // Préparer les headers
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...fetchOptions.headers,
+      ...(fetchOptions.headers as Record<string, string> | undefined),
     };
 
     // Ajouter le token d'authentification si nécessaire

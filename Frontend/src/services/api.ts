@@ -103,7 +103,7 @@ export interface RecentRequest {
   timestamp: string;
   user: string;
   question: string;
-  status: string;
+  status: "success" | "error";
   latency: number;
 }
 
@@ -529,22 +529,6 @@ class ApiClient {
 // ============================================================================
 
 export const apiClient = new ApiClient();
-
-// Export des types pour utilisation externe
-export type {
-  LoginResponse,
-  ChatQueryResponse,
-  Conversation,
-  MessageDTO,
-  MetricOverview,
-  RequestDataPoint,
-  RequestDetail,
-  LatencyComponentStat,
-  LatencyTrendPoint,
-  RecentRequest,
-  ErrorDistribution,
-  SystemStatus,
-};
 
 // Export de l'erreur API pour gestion d'erreurs
 export { ApiError } from './apiError';

@@ -12,7 +12,6 @@ import RequestsChart from "@/components/admin/RequestsChart";
 import RecentActivity from "@/components/admin/RecentActivity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
-import { cn } from "@/lib/utils";
 import {
   apiClient,
   ApiError,
@@ -87,7 +86,7 @@ const AdminDashboard = () => {
     <div className="space-y-6 relative">
       {/* Header with gradient effect */}
       <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent blur-3xl opacity-50" />
+        <div className="absolute inset-0 bg-linear-to-r from-primary/5 via-transparent to-transparent blur-3xl opacity-50" />
         <div className="relative flex flex-col gap-1">
           <h1 className="text-4xl md:text-5xl font-oswald font-medium tracking-tight">
             Dashboard
@@ -185,7 +184,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* System Status with template-inspired design */}
-      <Card className="relative overflow-hidden bg-gradient-to-br from-foreground to-foreground/95 text-background border-0 shadow-xl">
+      <Card className="relative overflow-hidden bg-linear-to-br from-foreground to-foreground/95 text-background border-0 shadow-xl">
         <div className="absolute inset-0 opacity-10">
           <div 
             className="absolute inset-0"
@@ -209,15 +208,15 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-sm">
-            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-sm border border-background/20">
+            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-xs border border-background/20">
               <span className="text-muted-foreground">&gt; RAG Pipeline</span>
               <span className="text-success font-semibold">{systemStatus?.rag_pipeline || "—"}</span>
             </div>
-            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-sm border border-background/20">
+            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-xs border border-background/20">
               <span className="text-muted-foreground">&gt; Vector DB</span>
               <span className="text-success font-semibold">{systemStatus?.vector_db || "—"}</span>
             </div>
-            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-sm border border-background/20">
+            <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-xs border border-background/20">
               <span className="text-muted-foreground">&gt; LLM Status</span>
               <span className="text-success font-semibold">
                 {systemStatus ? `${systemStatus.uptime_percentage}% Uptime` : "—"}

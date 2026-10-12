@@ -59,21 +59,6 @@ const TokenRestorer = () => {
   return null;
 };
 
-// Redirect component based on auth state
-const AuthRedirect = () => {
-  const { isAuthenticated, user } = useAuthStore();
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  if (user?.role === "admin") {
-    return <Navigate to="/admin/dashboard" replace />;
-  }
-  
-  return <Navigate to="/chat" replace />;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

@@ -18,7 +18,7 @@ const AdminLayout = () => {
           }}
         />
       </div>
-      <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-gradient-to-b from-primary/10 to-transparent opacity-50 dark:opacity-30 blur-3xl pointer-events-none rounded-full translate-x-1/3 -translate-y-1/3" />
+      <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-linear-to-b from-primary/10 to-transparent opacity-50 dark:opacity-30 blur-3xl pointer-events-none rounded-full translate-x-1/3 -translate-y-1/3" />
       
       <AdminSidebar
         collapsed={sidebarCollapsed}

@@ -169,7 +169,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 
 ### Lot 4 — Frontend *(~1 semaine)*
 
-- [ ] **L4.1** Mise à jour React 19, Vite, Tailwind 4, React Router 7 ; TypeScript strict.
+- [x] **L4.1** Mise à jour React 19, Vite, Tailwind 4, React Router 7 ; TypeScript strict. *Montées : React 19.3, Vite 8.3, Tailwind 4.3, React Router 7.18, Recharts 3.10, TypeScript 5.9 strict ; rendu comparé avant/après par captures (écarts : ombres personnalisées et interlignage des titres, désormais conformes au code).*
 - [ ] **L4.2** Client API généré depuis l'OpenAPI ; suppression des deux clients manuels.
 - [ ] **L4.3** TanStack Query pour tout l'état serveur.
 - [ ] **L4.4** Rendu Markdown sécurisé des réponses (tableaux, code).
