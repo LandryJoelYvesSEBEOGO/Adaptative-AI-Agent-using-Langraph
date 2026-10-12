@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     # --- Périphérique de calcul : "auto" (CUDA si disponible, sinon CPU), "cuda" ou "cpu" ---
     DEVICE_PREFERENCE: Literal["auto", "cuda", "cpu"] = "auto"
 
+    # --- Ingestion des documents ---
+    UPLOAD_DIR: str = str(DATA_DIR / "uploads")
+    MAX_UPLOAD_MB: int = 50
+    INGEST_PARSER: Literal["docling", "pypdf"] = "docling"
+    INGEST_CHUNK_MAX_CHARS: int = 3000
+
     # --- Réglages du pipeline ---
     MAX_RETRIES: int = 3  # Nombre maximum de tentatives en cas d'échec
     LLM_TIMEOUT: int = 30

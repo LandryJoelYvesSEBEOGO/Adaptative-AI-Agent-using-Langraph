@@ -1,12 +1,16 @@
 """Doubles de test du pipeline RAG : faux LLM en streaming, recherche factice."""
 
 import asyncio
+import hashlib
+import math
+import re
 from collections.abc import AsyncIterator
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 
+from config.settings import get_settings
 from src.rag.pipeline import Dependencies
 from src.rag.schemas import QueryAnalysis
 from src.rag.search import SearchResult
@@ -71,3 +75,22 @@ def make_deps(llm=None, docs=None, confident=True, web=None, analyzer=None, seen
         list_companies=lambda: ["3M", "ADOBE", "AMERICANEXPRESS"],
         web_search=web,
     )
+
+
+class HashEmbedder:
+    """Embedding déterministe par sac de mots hachés : similaire si les mots se recoupent."""
+
+    dim = get_settings().EMBEDDING_DIM
+
+    def _vec(self, text: str) -> list[float]:
+        vec = [0.0] * self.dim
+        for word in re.findall(r"[a-z0-9]+", text.lower()):
+            vec[int(hashlib.md5(word.encode()).hexdigest(), 16) % self.dim] += 1.0
+        norm = math.sqrt(sum(x * x for x in vec)) or 1.0
+        return [x / norm for x in vec]
+
+    def embed_documents(self, texts):
+        return [self._vec(t) for t in texts]
+
+    def embed_query(self, text):
+        return self._vec(text)

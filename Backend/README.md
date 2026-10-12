@@ -38,6 +38,7 @@ uv run uvicorn api.main:app --reload --port 8000
 | `config/Config.py` | Paramètres du pipeline (modèles, reranker, hybrid search, grading…) |
 | `src/rag/` | Pipeline RAG : `pipeline.py` (graphe LangGraph `analyze → retrieve → web_search → generate`, normal et streaming), `store.py` (pgvector + plein texte, fusion RRF), `embeddings.py`, `rerankers.py`, `search.py`, `query_analysis.py` |
 | `src/ingestion/` | Ingestion des PDF : parsing Docling, chunking par sections, métadonnées |
+| `scripts/ingest_corpus.py` | Indexe un dossier de PDF : `uv run python -m scripts.ingest_corpus data/raw` |
 | `evaluation/` | Évaluation FinanceBench (voir `evaluation/README.md`) |
 | `scripts/` | Utilitaires lancés à la main |
 | `tests/` | Tests |

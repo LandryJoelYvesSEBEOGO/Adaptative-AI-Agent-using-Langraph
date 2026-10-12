@@ -164,7 +164,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L3.4** Graphe simplifié : réécriture (seulement si historique) → recherche hybride → rerank → génération ; recherche web uniquement si les scores de rerank sont sous le seuil. Suppression du grading LLM par document. *Acceptation : ≤ 3 appels LLM par question dans le cas nominal (vérifié : 1 appel, 2 avec historique), score d'évaluation ≥ référence (**non vérifié** : nécessite la mesure L3.1).*
 - [x] **L3.5** Vrai streaming token par token via le graphe (`astream` / `stream_mode="messages"`), un seul chemin d'exécution.
 - [x] **L3.6** Sorties structurées (Pydantic) pour toutes les étapes qui renvoient du JSON.
-- [ ] **L3.7** Endpoint d'upload + ingestion asynchrone + statut par document *(si option B retenue)*.
+- [x] **L3.7** Endpoint d'upload + ingestion asynchrone + statut par document *(si option B retenue)*. *Réalisé de façon neutre vis-à-vis de la décision produit : upload réservé aux administrateurs (corpus partagé), `owner_id` conservé pour l'option B ; CLI `scripts/ingest_corpus.py` pour l'option A. Tâche de fond FastAPI (`BackgroundTasks`), pas encore arq.*
 - [ ] **L3.8** Évaluation automatique en CI sur un sous-ensemble du jeu de référence.
 
 ### Lot 4 — Frontend *(~1 semaine)*

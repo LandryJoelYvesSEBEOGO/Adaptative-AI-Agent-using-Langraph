@@ -1,9 +1,5 @@
 """L3.3 : fusion RRF, fournisseurs hébergés (simulés) et recherche hybride sur PostgreSQL."""
 
-import hashlib
-import math
-import re
-
 import httpx
 import pytest
 
@@ -24,6 +20,7 @@ from src.rag.store import (  # noqa: E402
     reciprocal_rank_fusion,
     to_or_tsquery,
 )
+from tests.fakes import HashEmbedder
 
 # ---------- fonctions pures ----------
 
@@ -124,25 +121,6 @@ pytestmark_pg = pytest.mark.skipif(
     not get_settings().database_url.startswith("postgresql"),
     reason="nécessite PostgreSQL + pgvector (DATABASE_URL)",
 )
-
-
-class HashEmbedder:
-    """Embedding déterministe par sac de mots hachés : similaire si les mots se recoupent."""
-
-    dim = get_settings().EMBEDDING_DIM
-
-    def _vec(self, text: str) -> list[float]:
-        vec = [0.0] * self.dim
-        for word in re.findall(r"[a-z0-9]+", text.lower()):
-            vec[int(hashlib.md5(word.encode()).hexdigest(), 16) % self.dim] += 1.0
-        norm = math.sqrt(sum(x * x for x in vec)) or 1.0
-        return [x / norm for x in vec]
-
-    def embed_documents(self, texts):
-        return [self._vec(t) for t in texts]
-
-    def embed_query(self, text):
-        return self._vec(text)
 
 
 CORPUS = {
