@@ -159,7 +159,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 ### Lot 3 — Qualité du RAG *(1 à 2 semaines)*
 
 - [~] **L3.1** Établir une **mesure de référence** sur le jeu FinanceBench (exactitude, fidélité, latence, coût) avant toute modification. *Outillage livré (`Backend/evaluation/`) ; la mesure elle-même reste à exécuter avec vos clés et le corpus (voir `Backend/evaluation/README.md`). Le coût en tokens n'est pas mesuré.*
-- [ ] **L3.2** Ingestion Docling avec conservation des tableaux, chunking par sections, métadonnées (société, année, type de document, page).
+- [x] **L3.2** Ingestion Docling avec conservation des tableaux, chunking par sections, métadonnées (société, année, type de document, page). *Parsing Docling non exécuté ici (modèles non téléchargeables) ; chunking, métadonnées et repli pypdf testés.*
 - [ ] **L3.3** Recherche hybride pgvector + full-text avec fusion RRF ; reranker hébergé avec seuil de score.
 - [ ] **L3.4** Graphe simplifié : réécriture (seulement si historique) → recherche hybride → rerank → génération ; recherche web uniquement si les scores de rerank sont sous le seuil. Suppression du grading LLM par document. *Acceptation : ≤ 3 appels LLM par question dans le cas nominal, score d'évaluation ≥ référence.*
 - [ ] **L3.5** Vrai streaming token par token via le graphe (`astream` / `stream_mode="messages"`), un seul chemin d'exécution.

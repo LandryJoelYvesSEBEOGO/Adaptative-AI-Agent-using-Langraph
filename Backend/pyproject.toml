@@ -30,6 +30,7 @@ dependencies = [
     "chromadb>=0.5",
     "tavily-python>=0.3",
     "tqdm>=4.66",
+    "pypdf>=4.0",  # repli d'ingestion sans Docling
 ]
 
 [project.optional-dependencies]
@@ -44,6 +45,9 @@ ml = [
     "nltk>=3.8",
     "torch>=2.0",
 ]
+
+# Ingestion structurée des PDF (tableaux conservés). Nécessite le téléchargement de modèles.
+ingest = ["docling>=2.0"]
 
 [dependency-groups]
 dev = [
