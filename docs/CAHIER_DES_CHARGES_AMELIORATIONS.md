@@ -173,7 +173,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L4.2** Client API généré depuis l'OpenAPI ; suppression des deux clients manuels. *`openapi-typescript` + `openapi-fetch`, schéma versionné et contrôlé en CI ; renouvellement transparent de session ; flux SSE typé à la main (hors OpenAPI).*
 - [x] **L4.3** TanStack Query pour tout l'état serveur. *Session, conversations, messages, avis (mise à jour optimiste) et pages d'administration ; le flux de génération reste un état local par nature.*
 - [x] **L4.4** Rendu Markdown sécurisé des réponses (tableaux, code). *`react-markdown` + `remark-gfm` + `rehype-sanitize` ; scripts, `onerror` et liens `javascript:` neutralisés (testés) ; renvois `[n]` rendus en badges.*
-- [ ] **L4.5** Citations au survol + panneau des sources avec aperçu de la page PDF.
+- [x] **L4.5** Citations au survol + panneau des sources avec aperçu de la page PDF. *Vérifié en navigateur sur un vrai PDF servi par l'API (pdf.js « legacy », worker local) ; aucune capture sur un vrai 10-K.*
 - [ ] **L4.6** Boutons Stop (annulation côté serveur), Régénérer, Copier ; feedback persisté.
 - [ ] **L4.7** Pages admin réelles (Documents, Utilisateurs) ; suppression ou masquage des pages factices.
 - [ ] **L4.8** Suppression des reliquats Lovable et des composants shadcn inutilisés ; auth par cookie httpOnly.

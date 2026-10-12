@@ -6,6 +6,7 @@ import { useConversations, useFeedback, useMessages } from "@/api/hooks";
 import { useLogout, useSession } from "@/auth/session";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import MessageItem from "@/components/chat/MessageItem";
+import SourcesPanel from "@/components/chat/SourcesPanel";
 import QueryError from "@/components/QueryError";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useChat } from "@/hooks/useChat";
 import { useToast } from "@/hooks/use-toast";
 import { errorMessage } from "@/api/errors";
-import type { FeedbackType } from "@/api/types";
+import type { Citation, FeedbackType } from "@/api/types";
 
 const SUGGESTED_QUESTIONS = [
   "What was 3M's capital expenditure in fiscal 2018?",
@@ -25,6 +26,10 @@ const Chat = () => {
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
+  const [sources, setSources] = useState<{ citations: Citation[]; selected: number | null }>({
+    citations: [],
+    selected: null,
+  });
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -93,6 +98,9 @@ const Chat = () => {
     textareaRef.current?.focus();
   };
 
+  const openSources = (citations: Citation[] | null | undefined, selected: number) =>
+    citations?.length && setSources({ citations, selected });
+
   const lastAssistantId = messages.findLast((m) => m.role === "assistant")?.id;
   const showEmpty = messages.length === 0 && !pending;
 
@@ -115,6 +123,13 @@ const Chat = () => {
           setSidebarOpen(false);
         }}
         onLogout={() => logout.mutate(undefined, { onSettled: () => navigate("/") })}
+      />
+
+      <SourcesPanel
+        citations={sources.citations}
+        selected={sources.selected}
+        onSelect={(selected) => setSources((state) => ({ ...state, selected }))}
+        onClose={() => setSources((state) => ({ ...state, selected: null }))}
       />
 
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
@@ -181,6 +196,7 @@ const Chat = () => {
                 stopped={message.stopped}
                 feedback={message.feedback}
                 canRegenerate={message.id === lastAssistantId && !pending}
+                onOpenSource={(n) => openSources(message.citations, n)}
                 onCopy={() => handleCopy(message.content)}
                 onFeedback={(type) => handleFeedback(message.id, type)}
                 onRegenerate={() => void regenerate()}

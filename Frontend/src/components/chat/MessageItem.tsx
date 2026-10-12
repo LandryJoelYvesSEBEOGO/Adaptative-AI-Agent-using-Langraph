@@ -2,7 +2,9 @@ import { Bot, Copy, RotateCcw, ThumbsDown, ThumbsUp, User } from "lucide-react";
 
 import type { Citation, FeedbackType, Message } from "@/api/types";
 import { Button } from "@/components/ui/button";
+import CitationBadge from "@/components/chat/CitationBadge";
 import Markdown from "@/components/chat/Markdown";
+import { byNumber } from "@/lib/sources";
 import { cn } from "@/lib/utils";
 
 interface MessageItemProps {
@@ -15,6 +17,7 @@ interface MessageItemProps {
   streaming?: boolean;
   feedback?: FeedbackType | null;
   canRegenerate?: boolean;
+  onOpenSource?: (number: number) => void;
   onCopy?: () => void;
   onFeedback?: (type: FeedbackType) => void;
   onRegenerate?: () => void;
@@ -28,11 +31,13 @@ const MessageItem = ({
   streaming,
   feedback,
   canRegenerate,
+  onOpenSource,
   onCopy,
   onFeedback,
   onRegenerate,
 }: MessageItemProps) => {
   const isUser = role === "user";
+  const sources = byNumber(citations);
   return (
     <div className={cn("flex gap-4", isUser ? "justify-end" : "justify-start")} data-role={role}>
       {!isUser && (
@@ -45,14 +50,27 @@ const MessageItem = ({
           {isUser ? (
             <p className="whitespace-pre-wrap">{content}</p>
           ) : (
-            <Markdown content={content} />
+            <Markdown
+              content={content}
+              renderCitation={(number) => (
+                <CitationBadge
+                  number={number}
+                  citation={sources.get(number)}
+                  onOpen={(n) => onOpenSource?.(n)}
+                />
+              )}
+            />
           )}
           {streaming && <span className="inline-block w-2 h-4 ml-0.5 align-text-bottom bg-current animate-pulse" />}
         </div>
         {!isUser && citations && citations.length > 0 && !streaming && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {citations.length} source{citations.length > 1 ? "s" : ""}
-          </p>
+          <button
+            type="button"
+            onClick={() => onOpenSource?.(citations[0].id)}
+            className="mt-2 text-xs text-primary hover:underline"
+          >
+            {citations.length} source{citations.length > 1 ? "s" : ""} · voir
+          </button>
         )}
         {stopped && <p className="mt-2 text-xs italic text-muted-foreground">Réponse interrompue</p>}
         {!isUser && !streaming && content && (

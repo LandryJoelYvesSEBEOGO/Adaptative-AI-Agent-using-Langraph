@@ -27,8 +27,11 @@ export default defineConfig({
     css: false,
   },
   resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
+    alias: [
+      { find: "@", replacement: fileURLToPath(new URL("./src", import.meta.url)) },
+      // pdf.js « legacy » : fonctionne sans les API JavaScript récentes (Map.getOrInsertComputed…)
+      // absentes de certains navigateurs encore répandus
+      { find: /^pdfjs-dist$/, replacement: "pdfjs-dist/legacy/build/pdf.mjs" },
+    ],
   },
 });
