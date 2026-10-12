@@ -163,7 +163,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L3.3** Recherche hybride pgvector + full-text avec fusion RRF ; reranker hébergé avec seuil de score. *Recherche validée sur PostgreSQL 16 + pgvector ; clients Cohere / OpenAI testés avec HTTP simulé (pas d'appel réel). Le seuil `RERANK_MIN_SCORE` est à calibrer.*
 - [ ] **L3.4** Graphe simplifié : réécriture (seulement si historique) → recherche hybride → rerank → génération ; recherche web uniquement si les scores de rerank sont sous le seuil. Suppression du grading LLM par document. *Acceptation : ≤ 3 appels LLM par question dans le cas nominal, score d'évaluation ≥ référence.*
 - [ ] **L3.5** Vrai streaming token par token via le graphe (`astream` / `stream_mode="messages"`), un seul chemin d'exécution.
-- [ ] **L3.6** Sorties structurées (Pydantic) pour toutes les étapes qui renvoient du JSON.
+- [x] **L3.6** Sorties structurées (Pydantic) pour toutes les étapes qui renvoient du JSON.
 - [ ] **L3.7** Endpoint d'upload + ingestion asynchrone + statut par document *(si option B retenue)*.
 - [ ] **L3.8** Évaluation automatique en CI sur un sous-ensemble du jeu de référence.
 
