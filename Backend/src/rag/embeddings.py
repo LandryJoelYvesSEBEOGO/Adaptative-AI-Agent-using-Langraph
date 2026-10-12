@@ -104,7 +104,7 @@ class NomicLocalEmbedder:
     """Modèle Nomic exécuté dans le processus (extra `ml`)."""
 
     def __init__(self, model: str, dim: int):
-        from langchain_nomic.embeddings import NomicEmbeddings
+        from langchain_nomic.embeddings import NomicEmbeddings  # pyright: ignore[reportMissingImports]
 
         self.dim = dim
         self._embeddings = NomicEmbeddings(model=model, inference_mode="local")
