@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple, Callable
 import uuid
 import time
 import re
+import logging
 
 # Ajouter le chemin du projet
 project_root = Path(__file__).parent.parent.parent
@@ -61,6 +62,8 @@ def _build_conversation_history(conversation_id: Optional[str], current_question
         history_text = history_text[-max_chars:]
     
     return history_text
+
+logger = logging.getLogger(__name__)
 
 def extract_citations(response_text: str, documents: Optional[List] = None) -> List[Dict]:
     """
@@ -207,6 +210,7 @@ def process_rag_query(question: str, conversation_id: Optional[str] = None) -> D
         }
     
     except Exception as e:
+        logger.exception("Erreur lors du traitement RAG")
         latency = time.time() - start_time
         latencies = {"end_to_end": latency}
         return {
@@ -219,7 +223,7 @@ def process_rag_query(question: str, conversation_id: Optional[str] = None) -> D
             "answer_quality_score": None,
             "answer_quality_scores": None,
             "success": False,
-            "error": str(e)
+            "error": "Erreur lors du traitement de la requête"
         }
 
 def process_rag_query_stream(
@@ -325,7 +329,8 @@ def process_rag_query_stream(
         # Les citations sont maintenant gérées séparément via l'API, pas dans le texte de réponse
         # Suppression de l'affichage __CITATIONS__ dans le texte pour éviter l'affichage brut sur le frontend
     
-    except Exception as e:
+    except Exception:
+        logger.exception("Erreur lors du streaming RAG")
         if on_complete:
             on_complete({
                 "latencies": {"end_to_end": time.time() - start_time},
@@ -335,6 +340,6 @@ def process_rag_query_stream(
                 "answer_quality_scores": None,
                 "citations": [],
                 "success": False,
-                "error": str(e),
+                "error": "Erreur lors du traitement de la requête",
             })
-        yield f"⚠️ Erreur lors de la génération: {str(e)}"
+        yield "⚠️ Erreur lors de la génération de la réponse."

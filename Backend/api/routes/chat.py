@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from api.dependencies import get_current_user
 from api.models.chat import ChatQueryRequest, ChatQueryResponse, FeedbackRequest
 from api.services.chat_service import process_rag_query, process_rag_query_stream
-from api.dependencies import get_current_user
 from api.services.conversation_service import (
     create_conversation,
     add_message,
@@ -12,7 +12,11 @@ from api.services.conversation_service import (
 from api.services.metrics_service import record_request
 import json
 
-router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
+router = APIRouter(
+    prefix="/api/v1/chat",
+    tags=["chat"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _resolve_conversation(request: ChatQueryRequest, current_user: dict) -> str:

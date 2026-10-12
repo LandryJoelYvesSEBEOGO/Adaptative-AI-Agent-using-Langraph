@@ -5,50 +5,38 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from typing import Optional
-from dotenv import load_dotenv
 import os
 
-load_dotenv()
-
-MIN_SECRET_LENGTH = 32
-
-
-def _load_secret_key() -> str:
-    """Charge le secret JWT ; refuse de démarrer s'il est absent ou trop faible."""
-    secret = os.getenv("JWT_SECRET_KEY", "").strip()
-    if len(secret) < MIN_SECRET_LENGTH:
-        raise RuntimeError(
-            "JWT_SECRET_KEY est absent ou trop court (minimum "
-            f"{MIN_SECRET_LENGTH} caractères). Générer une valeur avec : "
-            "python -c \"import secrets; print(secrets.token_urlsafe(48))\""
-        )
-    return secret
-
-
 # Configuration
-SECRET_KEY = _load_secret_key()
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY or len(SECRET_KEY) < 32:
+    raise RuntimeError(
+        "JWT_SECRET_KEY doit être défini (32 caractères minimum). "
+        "Générez-en une avec : python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 heures
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Base de données utilisateurs (à remplacer par une vraie DB)
-MOCK_USERS = [
-    {
-        "id": "1",
-        "email": "admin@rag-system.io",
-        "hashed_password": pwd_context.hash("admin"),
-        "name": "Admin User",
-        "role": "admin"
-    },
-    {
-        "id": "2",
-        "email": "user@rag-system.io",
-        "hashed_password": pwd_context.hash("user"),
-        "name": "Standard User",
-        "role": "user"
-    }
-]
+# Aucun compte par défaut : les comptes initiaux sont créés depuis l'environnement.
+MOCK_USERS = []
+
+def _seed_user(prefix: str, name: str, role: str) -> None:
+    email = os.getenv(f"{prefix}_EMAIL")
+    password = os.getenv(f"{prefix}_PASSWORD")
+    if email and password:
+        MOCK_USERS.append({
+            "id": str(len(MOCK_USERS) + 1),
+            "email": email.lower(),
+            "hashed_password": pwd_context.hash(password),
+            "name": name,
+            "role": role,
+        })
+
+_seed_user("ADMIN", "Admin User", "admin")
+_seed_user("DEFAULT_USER", "Standard User", "user")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Vérifie un mot de passe."""
@@ -94,7 +82,7 @@ def verify_token(token: str) -> Optional[dict]:
     except JWTError:
         return None
 
-def create_user(email: str, password: str, name: str) -> Optional[dict]:
+def create_user(email: str, password: str, name: str, role: str = "user") -> Optional[dict]:
     """Crée un nouvel utilisateur."""
     # Vérifier si l'utilisateur existe déjà
     if get_user_by_email(email):
@@ -112,7 +100,7 @@ def create_user(email: str, password: str, name: str) -> Optional[dict]:
         "email": email.lower(),
         "hashed_password": hashed_password,
         "name": name,
-        "role": "user"  # le rôle n'est jamais choisi par le client
+        "role": role if role in ["admin", "user"] else "user"
     }
     
     # Ajouter à la liste (dans une vraie app, on sauvegarderait en DB)
