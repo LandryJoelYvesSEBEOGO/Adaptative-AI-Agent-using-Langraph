@@ -58,17 +58,13 @@ def get_prompts(
     prompts = {
         # Router Instructions
         "router_instructions": router_instructions or """You are an expert at routing a user question to a vectorstore or web search.
-        The vectorstore contains documents related to agents, prompt engineering, and adversarial attacks.
-        The vectorstore Documents Titles : TxAgent: An AI Agent for Therapeutic Reasoning Across a Universe of Tools
-                        VGGT: Visual Geometry Grounded Transformer
-                        A Comprehensive Overview of Large Language Models
-                        Low-code LLM: Graphical User Interface over Large Language Models
-                        LLM Powered Autonomous Agents
-                        Prompt Engineering
-                        Adversarial Attacks on LLMs
-                        Large language model
+        The vectorstore contains annual (10-K) and quarterly (10-Q) financial reports of
+        publicly listed companies (income statements, balance sheets, cash flows, risk factors,
+        management discussion, segment results, etc.).
 
-        Use the vectorstore for questions on these topics. For all else, and especially for current events, use web-search.
+        Use the vectorstore for questions about the financial performance, accounting figures,
+        business segments, risks or disclosures of companies. For all else, and especially for
+        current events or recent market news, use web-search.
         Return JSON with a single key, 'datasource', that is either 'websearch' or 'vectorstore' depending on the question.""",
 
         # Retrieval Grader
@@ -133,10 +129,17 @@ Answer:"""
 
         # Rewritting Prompt
         "Rewritting_prompt": Rewritting_prompt or """"
-            You are a rewriting assistant. Your task is to take the user’s QUERY :\n\n {query}and rewrite it so that it is clearer, more concise, and easier for a Large Language Model to understand. 
-
-            - Preserve the original meaning of the query.
-            - Maintain important context and details.
+            You are a rewriting assistant. Your task is to take the user’s QUERY and conversation HISTORY and rewrite the query so that it is clear, explicit, and standalone.
+            
+            Conversation HISTORY (may be empty):
+            {history}
+            
+            User QUERY:
+            {query}
+            
+            Rewrite the query so it can be understood without the history. 
+            - Preserve the original meaning.
+            - Use the history to resolve references (e.g., "it", "that", "in 2022").
             - Improve grammar, structure, and clarity.
             - Return only the rewritten query, without additional commentary.
 

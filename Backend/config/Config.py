@@ -151,6 +151,10 @@ class Config:
     # Structured Output
     STRUCTURED_OUTPUT_ENABLED = False  # Désactivé par défaut (peut augmenter tokens)
     STRUCTURED_OUTPUT_FORMAT = "markdown"  # "markdown" ou "json"
+    
+    # Conversation context (mémoire)
+    CONVERSATION_CONTEXT_TURNS = 6  # Nombre de tours (user+assistant) à injecter
+    CONVERSATION_CONTEXT_MAX_CHARS = 2000  # Taille max du contexte conversationnel
 
 
 # Global variables

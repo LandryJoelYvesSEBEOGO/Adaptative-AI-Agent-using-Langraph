@@ -23,14 +23,14 @@ import { useAuthStore } from "@/stores/authStore";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
-import { apiClient, ApiError } from "@/services/api";
+import { apiClient, ApiError, Conversation, MessageDTO } from "@/services/api";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  citations?: { id: number; source: string; excerpt: string }[];
+  citations?: { id: number; source: string; excerpt: string; metadata?: Record<string, any> }[];
   messageId?: string; // Pour le feedback
 }
 
@@ -50,6 +50,8 @@ const Chat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { user, logout } = useAuthStore();
@@ -63,6 +65,52 @@ const Chat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const loadConversations = async () => {
+      try {
+        const data = await apiClient.listConversations();
+        setConversations(data);
+      } catch (error) {
+        const apiError = error instanceof ApiError
+          ? error
+          : new ApiError(error instanceof Error ? error.message : "Impossible de charger l'historique");
+        toast({
+          title: "Erreur",
+          description: apiError.getUserMessage(),
+          variant: "destructive",
+        });
+      }
+    };
+    loadConversations();
+  }, [toast]);
+
+  const loadConversation = async (id: string) => {
+    try {
+      const msgs = await apiClient.listMessages(id);
+      setActiveConversationId(id);
+      setConversationId(id);
+      setMessages(
+        msgs.map((m: MessageDTO) => ({
+          id: m.id,
+          role: m.role === "user" ? "user" : "assistant",
+          content: m.content,
+          timestamp: new Date(m.created_at),
+          citations: m.citations,
+          messageId: m.id,
+        }))
+      );
+    } catch (error) {
+      const apiError = error instanceof ApiError
+        ? error
+        : new ApiError(error instanceof Error ? error.message : "Impossible de charger la conversation");
+      toast({
+        title: "Erreur",
+        description: apiError.getUserMessage(),
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -92,13 +140,22 @@ const Chat = () => {
     setMessages((prev) => [...prev, assistantMessage]);
 
     try {
+      let currentConversationId = conversationId;
+      if (!currentConversationId) {
+        const conv = await apiClient.createConversation(question.slice(0, 60));
+        currentConversationId = conv.id;
+        setConversationId(currentConversationId);
+        setActiveConversationId(currentConversationId);
+        setConversations((prev) => [conv, ...prev]);
+      }
+
       // Utiliser le streaming pour une meilleure UX
       let fullResponse = "";
       let citations: Message["citations"] = [];
 
       await apiClient.queryRAGStream(
         question,
-        conversationId,
+        currentConversationId,
         (chunk: string) => {
           fullResponse += chunk;
           // Mettre à jour le message en temps réel
@@ -110,20 +167,13 @@ const Chat = () => {
             )
           );
           scrollToBottom();
+        },
+        {
+          onCitations: (items) => {
+            citations = items;
+          }
         }
       );
-
-      // Une fois le streaming terminé, récupérer les citations et le conversation_id
-      // Pour l'instant, on extrait les citations du texte
-      const citationMatches = fullResponse.match(/\[(\d+)\]/g);
-      if (citationMatches) {
-        const uniqueIds = [...new Set(citationMatches.map(m => parseInt(m.slice(1, -1))))];
-        citations = uniqueIds.map(id => ({
-          id,
-          source: `Document ${id}`,
-          excerpt: `Extrait du document ${id}`,
-        }));
-      }
 
       // Mettre à jour le message final avec les citations
       setMessages((prev) =>
@@ -133,6 +183,9 @@ const Chat = () => {
             : msg
         )
       );
+
+      const updatedConversations = await apiClient.listConversations();
+      setConversations(updatedConversations);
     } catch (error) {
       // Utiliser le système d'erreurs expressif
       const apiError = error instanceof ApiError 
@@ -211,9 +264,23 @@ const Chat = () => {
     navigate("/");
   };
 
-  const handleNewChat = () => {
-    setMessages([]);
-    setConversationId(undefined);
+  const handleNewChat = async () => {
+    try {
+      const conv = await apiClient.createConversation("Nouvelle conversation");
+      setMessages([]);
+      setConversationId(conv.id);
+      setActiveConversationId(conv.id);
+      setConversations((prev) => [conv, ...prev]);
+    } catch (error) {
+      const apiError = error instanceof ApiError
+        ? error
+        : new ApiError(error instanceof Error ? error.message : "Impossible de créer la conversation");
+      toast({
+        title: "Erreur",
+        description: apiError.getUserMessage(),
+        variant: "destructive",
+      });
+    }
   };
 
   const renderCitation = (text: string, citations?: Message["citations"]) => {
@@ -226,13 +293,14 @@ const Chat = () => {
         const citationId = parseInt(match[1]);
         const citation = citations.find((c) => c.id === citationId);
         if (citation) {
+          const pageInfo = citation.metadata?.page ? ` (page ${citation.metadata.page})` : "";
           return (
             <button
               key={index}
               className="text-primary hover:underline font-medium mx-0.5"
               onClick={() =>
                 toast({
-                  title: citation.source,
+                  title: `${citation.source}${pageInfo}`,
                   description: citation.excerpt,
                 })
               }
@@ -312,17 +380,27 @@ const Chat = () => {
           <p className="text-xs font-space uppercase tracking-widest text-muted-foreground mb-3">
             Historique
           </p>
-          {[1, 2, 3].map((i) => (
-            <button
-              key={i}
-              className="w-full text-left p-3 rounded-lg hover:bg-sidebar-accent transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <MessageSquare className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
-                <span className="text-sm truncate">Conversation {i}</span>
-              </div>
-            </button>
-          ))}
+          {conversations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucune conversation</p>
+          ) : (
+            conversations.map((conversation) => (
+              <button
+                key={conversation.id}
+                onClick={() => loadConversation(conversation.id)}
+                className={cn(
+                  "w-full text-left p-3 rounded-lg hover:bg-sidebar-accent transition-colors group",
+                  activeConversationId === conversation.id && "bg-sidebar-accent"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+                  <span className="text-sm truncate">
+                    {conversation.title || "Conversation"}
+                  </span>
+                </div>
+              </button>
+            ))
+          )}
         </div>
 
         {/* User section */}

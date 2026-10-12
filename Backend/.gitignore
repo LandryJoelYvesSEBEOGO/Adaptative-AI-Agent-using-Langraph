@@ -1,106 +1,57 @@
-# Fichiers d'environnement et secrets
+# Secrets
 .env
 .env.*
+!.env.example
 *.env
 secrets.json
-config.json
 credentials.json
 
-# Fichiers Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
+.eggs/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
-.tox/
-.mypy_cache/
-.dmypy.json
-dmypy.json
 
 # Environnements virtuels
 venv/
-ENV/
-env/
 .venv/
-.ENV/
+env/
+ENV/
 
-# Bases de données et caches
+# Données générées (index, caches, base locale)
+data/raw/
 data/chroma_db/
+data/logs/
+data/metrics/
 *.sqlite3
 *.sqlite
 *.db
-.cache/
-.huggingface/
 *.pkl
 *.pickle
+.cache/
+.huggingface/
 
-# Fichiers spécifiques au projet
-/.qodo
-.qodo
-/output.mp4
-/RAG model llama copy.ipynb
-/RAG model llama.ipynb
-/two-stage-retrieval-rag-using-rerank-models.ipynb
-/Video_generator.py
-/Video_generator2.py
+# Logs et fichiers temporaires
+*.log
+*.tmp
+*.temp
+*.bak
 
-# Fichiers système
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Fichiers d'IDE
+# IDE et système
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-
-# Fichiers de logs
-*.log
-logs/
-log/
-
-# Fichiers temporaires
-*.tmp
-*.temp
-*.bak
-
-# Fichiers de test et diagnostic
-test_*.py
-*_test.py
-*_diagnostic.py
-diagnostic_*.py
-close_*.py
-install_*.py
-
-# Rapports et solutions de diagnostic
-RAPPORT_*.txt
-SOLUTION_*.md
-LANCER_*.md
-
-# Fichiers de documentation temporaire (garder README.md)
-ARCHITECTURE_*.txt
-
-# Fichiers de métriques et logs
-data/metrics/
-data/logs/
-*.log
+.DS_Store
+Thumbs.db
+desktop.ini

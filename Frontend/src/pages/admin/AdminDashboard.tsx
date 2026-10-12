@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Server,
   CheckCircle2,
@@ -12,70 +13,76 @@ import RecentActivity from "@/components/admin/RecentActivity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
-
-// Mock data
-const chartData = [
-  { date: "16 Dec", requests: 145, success: 138, errors: 7 },
-  { date: "17 Dec", requests: 168, success: 160, errors: 8 },
-  { date: "18 Dec", requests: 189, success: 182, errors: 7 },
-  { date: "19 Dec", requests: 201, success: 195, errors: 6 },
-  { date: "20 Dec", requests: 178, success: 170, errors: 8 },
-  { date: "21 Dec", requests: 156, success: 149, errors: 7 },
-  { date: "22 Dec", requests: 134, success: 128, errors: 6 },
-];
-
-const errorDistribution = [
-  { name: "Timeout", value: 35, color: "hsl(var(--destructive))" },
-  { name: "Erreur LLM", value: 25, color: "hsl(var(--warning))" },
-  { name: "Retrieval", value: 20, color: "hsl(var(--chart-3))" },
-  { name: "Web Search", value: 15, color: "hsl(var(--chart-4))" },
-  { name: "Autres", value: 5, color: "hsl(var(--muted-foreground))" },
-];
-
-const recentRequests = [
-  {
-    id: "1",
-    timestamp: new Date(Date.now() - 2 * 60000).toISOString(),
-    user: "jean.dupont@company.com",
-    question: "Comment puis-je configurer les paramètres de sécurité ?",
-    status: "success" as const,
-    latency: 2.34,
-  },
-  {
-    id: "2",
-    timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-    user: "marie.martin@company.com",
-    question: "Quelles sont les meilleures pratiques pour l'intégration API ?",
-    status: "success" as const,
-    latency: 1.89,
-  },
-  {
-    id: "3",
-    timestamp: new Date(Date.now() - 12 * 60000).toISOString(),
-    user: "pierre.bernard@company.com",
-    question: "Pouvez-vous m'expliquer le processus de déploiement ?",
-    status: "error" as const,
-    latency: 8.45,
-  },
-  {
-    id: "4",
-    timestamp: new Date(Date.now() - 25 * 60000).toISOString(),
-    user: "sophie.petit@company.com",
-    question: "Comment générer un rapport d'activité mensuel ?",
-    status: "success" as const,
-    latency: 3.12,
-  },
-  {
-    id: "5",
-    timestamp: new Date(Date.now() - 45 * 60000).toISOString(),
-    user: "lucas.moreau@company.com",
-    question: "Quels sont les prérequis pour utiliser le module avancé ?",
-    status: "success" as const,
-    latency: 2.67,
-  },
-];
+import {
+  apiClient,
+  ApiError,
+  ErrorDistribution,
+  MetricOverview,
+  RequestDataPoint,
+  RecentRequest,
+  SystemStatus,
+} from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminDashboard = () => {
+  const [overview, setOverview] = useState<MetricOverview | null>(null);
+  const [chartData, setChartData] = useState<RequestDataPoint[]>([]);
+  const [errorDistribution, setErrorDistribution] = useState<ErrorDistribution | null>(null);
+  const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const [
+          overviewData,
+          chartDataResponse,
+          errorDistributionResponse,
+          recentRequestsResponse,
+          systemStatusResponse,
+        ] = await Promise.all([
+          apiClient.getMetricsOverview(),
+          apiClient.getMetricsRequests(7),
+          apiClient.getErrorDistribution(),
+          apiClient.getRecentRequests(10),
+          apiClient.getSystemStatus(),
+        ]);
+
+        setOverview(overviewData);
+        setChartData(chartDataResponse);
+        setErrorDistribution(errorDistributionResponse);
+        setRecentRequests(recentRequestsResponse);
+        setSystemStatus(systemStatusResponse);
+      } catch (error) {
+        const apiError =
+          error instanceof ApiError
+            ? error
+            : new ApiError(error instanceof Error ? error.message : "Erreur lors du chargement");
+        toast({
+          title: "Erreur",
+          description: apiError.getUserMessage(),
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadDashboard();
+  }, [toast]);
+
+  const errorChartData = errorDistribution
+    ? [
+        { name: "Timeout", value: errorDistribution.timeout, color: "hsl(var(--destructive))" },
+        { name: "Erreur LLM", value: errorDistribution.llm_error, color: "hsl(var(--warning))" },
+        { name: "Retrieval", value: errorDistribution.retrieval, color: "hsl(var(--chart-3))" },
+        { name: "Web Search", value: errorDistribution.web_search, color: "hsl(var(--chart-4))" },
+        { name: "Autres", value: errorDistribution.other, color: "hsl(var(--muted-foreground))" },
+      ]
+    : [];
+
+  const successRate = overview ? `${overview.success_rate.toFixed(1)}%` : "--";
+  const averageLatency = overview ? `${overview.average_latency.toFixed(2)}s` : "--";
+
   return (
     <div className="space-y-6 relative">
       {/* Header with gradient effect */}
@@ -95,32 +102,29 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Requêtes"
-          value="12,847"
+          value={overview ? overview.total_requests.toLocaleString() : "--"}
           subtitle="Toutes les requêtes"
           icon={Server}
-          trend={{ value: 12.5, isPositive: true }}
         />
         <MetricCard
           title="Requêtes Aujourd'hui"
-          value="134"
+          value={overview ? overview.requests_today.toString() : "--"}
           subtitle="Depuis minuit"
           icon={Activity}
-          trend={{ value: 8.2, isPositive: true }}
           variant="success"
         />
         <MetricCard
           title="Taux de Succès"
-          value="96.2%"
-          subtitle="5 échecs aujourd'hui"
+          value={successRate}
+          subtitle={overview ? `${overview.error_count} échecs` : "—"}
           icon={CheckCircle2}
           variant="success"
         />
         <MetricCard
           title="Latence Moyenne"
-          value="2.4s"
+          value={averageLatency}
           subtitle="End-to-end"
           icon={Clock}
-          trend={{ value: 5.3, isPositive: false }}
           variant="warning"
         />
       </div>
@@ -142,7 +146,7 @@ const AdminDashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={errorDistribution}
+                    data={errorChartData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -150,7 +154,7 @@ const AdminDashboard = () => {
                     paddingAngle={2}
                     dataKey="value"
                   >
-                    {errorDistribution.map((entry, index) => (
+                    {errorChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -207,15 +211,17 @@ const AdminDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-sm">
             <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-sm border border-background/20">
               <span className="text-muted-foreground">&gt; RAG Pipeline</span>
-              <span className="text-success font-semibold">Active</span>
+              <span className="text-success font-semibold">{systemStatus?.rag_pipeline || "—"}</span>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-sm border border-background/20">
               <span className="text-muted-foreground">&gt; Vector DB</span>
-              <span className="text-success font-semibold">Connected</span>
+              <span className="text-success font-semibold">{systemStatus?.vector_db || "—"}</span>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-sm border border-background/20">
               <span className="text-muted-foreground">&gt; LLM Status</span>
-              <span className="text-success font-semibold">98.5% Uptime</span>
+              <span className="text-success font-semibold">
+                {systemStatus ? `${systemStatus.uptime_percentage}% Uptime` : "—"}
+              </span>
             </div>
           </div>
         </CardContent>
