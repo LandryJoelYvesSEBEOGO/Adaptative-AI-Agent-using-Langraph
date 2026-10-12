@@ -181,14 +181,17 @@ def get_llm_json_with_fallback():
     # Utiliser le gestionnaire de clés API (rotation automatique en cas de rate limit)
     return groq_key_manager.get_current_llm(json_mode=True)
 
-def Rewrite_query(query: str) -> str:
-    """Rewrite the query to be more specific."""
+def Rewrite_query(query: str, history: Optional[str] = None) -> str:
+    """Rewrite the query to be more specific, using optional conversation history."""
     try:
         print("---Rewrite the query---")
         if not query or not query.strip():
             return query
         
-        rewritting_prompt_formatted = prompt["Rewritting_prompt"].format(query=query)
+        rewritting_prompt_formatted = prompt["Rewritting_prompt"].format(
+            query=query,
+            history=history or ""
+        )
         
         def _call_llm():
             # Utiliser le gestionnaire de clés avec fallback automatique
@@ -1581,7 +1584,7 @@ def get_final_response(query: str) -> str:
         
         # Réécriture de la requête (avec fallback sur query originale)
         try:
-            rewritten_query = Rewrite_query(query)
+            rewritten_query = Rewrite_query(query, history=None)
         except Exception as e:
             print(f"⚠️ Erreur réécriture, utilisation query originale: {str(e)}")
             rewritten_query = query
@@ -1803,7 +1806,7 @@ def get_final_response_stream(query: str):
         
         # Réécriture de la requête
         try:
-            rewritten_query = Rewrite_query(query)
+            rewritten_query = Rewrite_query(query, history=None)
         except Exception as e:
             print(f"⚠️ Erreur réécriture, utilisation query originale: {str(e)}")
             rewritten_query = query

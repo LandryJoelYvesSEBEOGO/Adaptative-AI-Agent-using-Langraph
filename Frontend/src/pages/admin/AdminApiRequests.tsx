@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,71 +12,45 @@ import {
 } from "@/components/ui/select";
 import { Search, Filter, Download, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const mockRequests = [
-  {
-    id: "req_001",
-    timestamp: "2024-12-22 14:30:25",
-    user: "jean.dupont@company.com",
-    question: "Comment configurer les paramètres de sécurité avancés ?",
-    status: "success",
-    latency: 2.34,
-    docsCount: 5,
-    quality: 0.89,
-  },
-  {
-    id: "req_002",
-    timestamp: "2024-12-22 14:28:12",
-    user: "marie.martin@company.com",
-    question: "Quelles sont les meilleures pratiques pour l'intégration ?",
-    status: "success",
-    latency: 1.89,
-    docsCount: 4,
-    quality: 0.92,
-  },
-  {
-    id: "req_003",
-    timestamp: "2024-12-22 14:25:45",
-    user: "pierre.bernard@company.com",
-    question: "Pouvez-vous m'expliquer le processus de déploiement ?",
-    status: "error",
-    latency: 8.45,
-    docsCount: 0,
-    quality: 0,
-  },
-  {
-    id: "req_004",
-    timestamp: "2024-12-22 14:20:33",
-    user: "sophie.petit@company.com",
-    question: "Comment générer un rapport d'activité mensuel ?",
-    status: "success",
-    latency: 3.12,
-    docsCount: 6,
-    quality: 0.85,
-  },
-  {
-    id: "req_005",
-    timestamp: "2024-12-22 14:15:18",
-    user: "lucas.moreau@company.com",
-    question: "Quels sont les prérequis pour utiliser le module avancé ?",
-    status: "success",
-    latency: 2.67,
-    docsCount: 3,
-    quality: 0.88,
-  },
-];
+import { apiClient, ApiError, RequestDetail } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 const AdminApiRequests = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [requests, setRequests] = useState<RequestDetail[]>([]);
+  const { toast } = useToast();
 
-  const filteredRequests = mockRequests.filter((req) => {
-    const matchesStatus = statusFilter === "all" || req.status === statusFilter;
-    const matchesSearch =
-      req.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.user.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  useEffect(() => {
+    const loadRequests = async () => {
+      try {
+        const data = await apiClient.getAdminRequests(100);
+        setRequests(data);
+      } catch (error) {
+        const apiError =
+          error instanceof ApiError
+            ? error
+            : new ApiError(error instanceof Error ? error.message : "Erreur lors du chargement");
+        toast({
+          title: "Erreur",
+          description: apiError.getUserMessage(),
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadRequests();
+  }, [toast]);
+
+  const filteredRequests = useMemo(() => {
+    return requests.filter((req) => {
+      const matchesStatus = statusFilter === "all" || req.status === statusFilter;
+      const matchesSearch =
+        req.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        req.user.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesStatus && matchesSearch;
+    });
+  }, [requests, searchQuery, statusFilter]);
 
   return (
     <div className="space-y-6">
@@ -196,7 +170,7 @@ const AdminApiRequests = () => {
           {/* Pagination */}
           <div className="flex items-center justify-between p-4 border-t border-border">
             <p className="text-sm text-muted-foreground">
-              Affichage de 1 à {filteredRequests.length} sur {mockRequests.length} résultats
+              Affichage de 1 à {filteredRequests.length} sur {requests.length} résultats
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" disabled>

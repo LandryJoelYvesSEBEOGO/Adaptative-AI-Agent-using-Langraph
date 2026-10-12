@@ -1,7 +1,7 @@
 import sys
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Callable
 import uuid
 import time
 import re
@@ -19,6 +19,48 @@ from src.rag.Rag_model import (
     Rewrite_query
 )
 from config.Config import Config
+from api.services.conversation_service import list_messages
+
+def _normalize_text(text: Optional[str]) -> str:
+    return (text or "").strip()
+
+def _build_conversation_history(conversation_id: Optional[str], current_question: str) -> str:
+    if not conversation_id:
+        return ""
+    
+    try:
+        messages = list_messages(conversation_id)
+    except Exception:
+        return ""
+    
+    if not messages:
+        return ""
+    
+    current_question_norm = _normalize_text(current_question)
+    if messages and messages[-1].get("role") == "user":
+        last_content = _normalize_text(messages[-1].get("content"))
+        if last_content == current_question_norm:
+            messages = messages[:-1]
+    
+    max_turns = getattr(Config, "CONVERSATION_CONTEXT_TURNS", 6)
+    max_chars = getattr(Config, "CONVERSATION_CONTEXT_MAX_CHARS", 2000)
+    max_messages = max_turns * 2
+    recent_messages = messages[-max_messages:]
+    
+    parts = []
+    for msg in recent_messages:
+        content = _normalize_text(msg.get("content"))
+        if not content:
+            continue
+        role = msg.get("role") or "user"
+        label = "User" if role == "user" else "Assistant" if role == "assistant" else str(role)
+        parts.append(f"{label}: {content}")
+    
+    history_text = "\n".join(parts)
+    if max_chars and len(history_text) > max_chars:
+        history_text = history_text[-max_chars:]
+    
+    return history_text
 
 def extract_citations(response_text: str, documents: Optional[List] = None) -> List[Dict]:
     """
@@ -62,21 +104,29 @@ def extract_citations(response_text: str, documents: Optional[List] = None) -> L
         # Mapper à la vraie source si disponible
         source_name = f"Document {citation_id}"
         source_path = ""
+        page_number = None
         if sources and 1 <= citation_id <= len(sources):
             source_info = sources[citation_id - 1]  # -1 car les indices commencent à 0
             source_name = source_info.get('title') or source_info.get('source', f'Document {citation_id}')
             source_path = source_info.get('source', '')
+            page_number = source_info.get('page')
             # Nettoyer le nom de la source (enlever le chemin complet si c'est un fichier)
             if source_path and '/' in source_path:
                 source_name = source_path.split('/')[-1] if not source_info.get('title') else source_info.get('title')
         
+        if page_number is not None:
+            source_display = f"{source_name} (page {page_number})"
+        else:
+            source_display = source_name
+        
         citations.append({
             "id": citation_id,
-            "source": source_name if source_name != "Unknown source" else f"Document {citation_id}",
+            "source": source_display if source_display != "Unknown source" else f"Document {citation_id}",
             "excerpt": excerpt or f"Référence au document {citation_id}",
             "metadata": {
                 "source_path": source_path,
-                "parent_doc_id": sources[citation_id - 1].get('parent_doc_id', '') if sources and 1 <= citation_id <= len(sources) else ''
+                "parent_doc_id": sources[citation_id - 1].get('parent_doc_id', '') if sources and 1 <= citation_id <= len(sources) else '',
+                "page": page_number
             }
         })
     
@@ -95,7 +145,8 @@ def process_rag_query(question: str, conversation_id: Optional[str] = None) -> D
         # Exécuter le workflow pour obtenir la réponse ET les documents
         # Réécriture de la requête
         try:
-            rewritten_query = Rewrite_query(question)
+            conversation_history = _build_conversation_history(conversation_id, question)
+            rewritten_query = Rewrite_query(question, history=conversation_history)
         except Exception as e:
             rewritten_query = question
         
@@ -133,40 +184,63 @@ def process_rag_query(question: str, conversation_id: Optional[str] = None) -> D
         citations = extract_citations(response_text, documents)
         
         latency = time.time() - start_time
+        latencies = final_state.get("latencies", {}) or {}
+        if "end_to_end" not in latencies:
+            latencies["end_to_end"] = latency
+
+        answer_quality_scores = final_state.get("answer_quality_scores")
+        answer_quality_score = None
+        if isinstance(answer_quality_scores, dict):
+            answer_quality_score = answer_quality_scores.get("overall_score")
         
         return {
             "response": response_text,
             "citations": citations,
             "conversation_id": conversation_id,
             "latency": latency,
+            "latencies": latencies,
+            "num_documents": len(documents),
+            "answer_quality_score": answer_quality_score,
+            "answer_quality_scores": answer_quality_scores,
             "success": True,
             "error": None
         }
     
     except Exception as e:
         latency = time.time() - start_time
+        latencies = {"end_to_end": latency}
         return {
             "response": "",
             "citations": [],
             "conversation_id": conversation_id or str(uuid.uuid4()),
             "latency": latency,
+            "latencies": latencies,
+            "num_documents": 0,
+            "answer_quality_score": None,
+            "answer_quality_scores": None,
             "success": False,
             "error": str(e)
         }
 
-def process_rag_query_stream(question: str, conversation_id: Optional[str] = None):
+def process_rag_query_stream(
+    question: str,
+    conversation_id: Optional[str] = None,
+    on_complete: Optional[Callable[[Dict], None]] = None
+):
     """
     Traite une question RAG en mode streaming.
     Retourne un générateur qui yield les chunks, puis les citations à la fin.
     """
     if not conversation_id:
         conversation_id = str(uuid.uuid4())
-    
+    start_time = time.time()
+
     try:
         # Exécuter le workflow manuellement pour obtenir les documents
         # Réécriture de la requête
         try:
-            rewritten_query = Rewrite_query(question)
+            conversation_history = _build_conversation_history(conversation_id, question)
+            rewritten_query = Rewrite_query(question, history=conversation_history)
         except Exception as e:
             rewritten_query = question
         
@@ -224,12 +298,43 @@ def process_rag_query_stream(question: str, conversation_id: Optional[str] = Non
         
         # Mettre à jour l'état final
         final_state = generation_state
-        
+
         # Extraire les citations avec les vraies sources
         citations = extract_citations(full_response, documents)
+
+        latencies = final_state.get("latencies", current_state.get("latencies", {})) or {}
+        latencies["end_to_end"] = time.time() - start_time
+
+        answer_quality_scores = final_state.get("answer_quality_scores")
+        answer_quality_score = None
+        if isinstance(answer_quality_scores, dict):
+            answer_quality_score = answer_quality_scores.get("overall_score")
+
+        if on_complete:
+            on_complete({
+                "latencies": latencies,
+                "num_documents": len(documents),
+                "response_length": len(full_response),
+                "answer_quality_score": answer_quality_score,
+                "answer_quality_scores": answer_quality_scores,
+                "citations": citations,
+                "success": True,
+                "error": None,
+            })
         
         # Les citations sont maintenant gérées séparément via l'API, pas dans le texte de réponse
         # Suppression de l'affichage __CITATIONS__ dans le texte pour éviter l'affichage brut sur le frontend
     
     except Exception as e:
+        if on_complete:
+            on_complete({
+                "latencies": {"end_to_end": time.time() - start_time},
+                "num_documents": 0,
+                "response_length": 0,
+                "answer_quality_score": None,
+                "answer_quality_scores": None,
+                "citations": [],
+                "success": False,
+                "error": str(e),
+            })
         yield f"⚠️ Erreur lors de la génération: {str(e)}"

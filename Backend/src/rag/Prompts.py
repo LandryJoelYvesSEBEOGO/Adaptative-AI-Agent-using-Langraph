@@ -133,10 +133,17 @@ Answer:"""
 
         # Rewritting Prompt
         "Rewritting_prompt": Rewritting_prompt or """"
-            You are a rewriting assistant. Your task is to take the user’s QUERY :\n\n {query}and rewrite it so that it is clearer, more concise, and easier for a Large Language Model to understand. 
-
-            - Preserve the original meaning of the query.
-            - Maintain important context and details.
+            You are a rewriting assistant. Your task is to take the user’s QUERY and conversation HISTORY and rewrite the query so that it is clear, explicit, and standalone.
+            
+            Conversation HISTORY (may be empty):
+            {history}
+            
+            User QUERY:
+            {query}
+            
+            Rewrite the query so it can be understood without the history. 
+            - Preserve the original meaning.
+            - Use the history to resolve references (e.g., "it", "that", "in 2022").
             - Improve grammar, structure, and clarity.
             - Return only the rewritten query, without additional commentary.
 

@@ -84,11 +84,26 @@ os.environ["USER_AGENT"] = "MyCustomUserAgent/1.0"
 
 # Liste des URLs à scraper
 urls = [
-    "https://lilianweng.github.io/posts/2023-06-23-agent/",
-    "https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/",
-    "https://lilianweng.github.io/posts/2023-10-25-adv-attack-llm/",
-    "https://en.wikipedia.org/wiki/Large_language_model",
-    "https://arxiv.org/pdf/2503.11651v1"
+    "https://arxiv.org/abs/2403.06779",   # Machine Learning in Empirical Asset Pricing
+    "https://arxiv.org/abs/2005.02347",   # Differential Machine Learning (Pricing & Risk)
+    "https://arxiv.org/abs/2003.03051",   # Cost-Sensitive Portfolio Selection (DRL)
+    "https://arxiv.org/abs/2409.17266",   # LLM Agent-based Asset Pricing Models
+    "https://arxiv.org/abs/2502.05878",   # RAG for Financial Time-Series Forecasting
+    "https://arxiv.org/abs/2511.09754",   # Macro-Contextual Retrieval for Finance
+    "https://arxiv.org/abs/2503.00549",   # Uncertainty in ML Asset Pricing
+    "https://arxiv.org/abs/2601.10279",   # Selecting and Testing Asset Pricing Models
+    "https://arxiv.org/abs/2510.16503",   # Sentiment and Volatility in Financial Markets
+    "https://arxiv.org/abs/2506.21591",   # FinEval: Evaluating LLMs in Finance
+    "https://arxiv.org/abs/2505.19617",   # Econometrics + ML for Financial Forecasting
+    "https://arxiv.org/abs/2503.22693",   # Bridging LLMs and Financial Analysis
+    "https://arxiv.org/abs/2511.20837",   # Deep Learning for Pricing & Hedging
+    "https://arxiv.org/abs/2306.17519",   # GPT-FinRE: Financial Relation Extraction
+    "https://arxiv.org/abs/2304.14544",   # Text Mining for Financial Time Series
+    "https://arxiv.org/abs/2401.01751",   # Text Mining Analysis of Quant Finance Papers
+    "https://arxiv.org/abs/2509.04812",   # Deep Learning for Conditional Asset Pricing
+    "https://arxiv.org/abs/1307.5336",    # Semantic Orientation in Financial Texts
+    "https://arxiv.org/abs/2510.03129",   # Transformer for Asset Allocation
+    "https://arxiv.org/abs/2508.14052"    # FinAgentBench: Agentic Retrieval in Finance
 ]
 
 # Répertoire pour ChromaDB (chemin absolu basé sur le répertoire racine du projet)

@@ -37,6 +37,27 @@ export interface ChatQueryResponse {
   error?: string;
 }
 
+export interface Conversation {
+  id: string;
+  title?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageDTO {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  citations?: Array<{
+    id: number;
+    source: string;
+    excerpt: string;
+    metadata?: Record<string, any>;
+  }>;
+  created_at: string;
+}
+
 export interface MetricOverview {
   total_requests: number;
   requests_today: number;
@@ -50,6 +71,31 @@ export interface RequestDataPoint {
   requests: number;
   success: number;
   errors: number;
+}
+
+export interface RequestDetail {
+  id: string;
+  timestamp: string;
+  user: string;
+  question: string;
+  status: string;
+  latency: number;
+  docs_count: number;
+  quality: number;
+}
+
+export interface LatencyComponentStat {
+  name: string;
+  avg: number;
+  p95: number;
+  p99: number;
+}
+
+export interface LatencyTrendPoint {
+  date: string;
+  endToEnd: number;
+  retrieval: number;
+  generation: number;
 }
 
 export interface RecentRequest {
@@ -196,6 +242,34 @@ class ApiClient {
   // ============================================================================
 
   /**
+   * Crée une nouvelle conversation
+   */
+  async createConversation(title?: string): Promise<Conversation> {
+    return apiRequest<Conversation>('/chat/conversations', {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    });
+  }
+
+  /**
+   * Liste les conversations de l'utilisateur
+   */
+  async listConversations(): Promise<Conversation[]> {
+    return apiRequest<Conversation[]>('/chat/conversations', {
+      method: 'GET',
+    });
+  }
+
+  /**
+   * Liste les messages d'une conversation
+   */
+  async listMessages(conversationId: string): Promise<MessageDTO[]> {
+    return apiRequest<MessageDTO[]>(`/chat/conversations/${conversationId}/messages`, {
+      method: 'GET',
+    });
+  }
+
+  /**
    * Requête RAG en mode normal (non-streaming)
    */
   async queryRAG(
@@ -220,7 +294,7 @@ class ApiClient {
     question: string,
     conversationId: string | undefined,
     onChunk: (chunk: string) => void,
-    options?: { timeout?: number; onError?: (error: Error) => void }
+    options?: { timeout?: number; onError?: (error: Error) => void; onCitations?: (citations: ChatQueryResponse["citations"]) => void }
   ): Promise<void> {
     const token = this.getToken();
     const url = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1'}/chat/query/stream`;
@@ -304,6 +378,9 @@ class ApiClient {
               if (parsed.chunk) {
                 onChunk(parsed.chunk);
               }
+              if (parsed.citations && options?.onCitations) {
+                options.onCitations(parsed.citations);
+              }
             } catch (e) {
               // Ignorer les erreurs de parsing pour les chunks individuels
               if (options?.onError && e instanceof Error) {
@@ -323,6 +400,9 @@ class ApiClient {
               const parsed = JSON.parse(data);
               if (parsed.chunk) {
                 onChunk(parsed.chunk);
+              }
+              if (parsed.citations && options?.onCitations) {
+                options.onCitations(parsed.citations);
               }
             } catch (e) {
               // Ignorer
@@ -399,6 +479,33 @@ class ApiClient {
   }
 
   /**
+   * Récupère les requêtes détaillées (admin)
+   */
+  async getAdminRequests(limit: number = 50): Promise<RequestDetail[]> {
+    return apiRequest<RequestDetail[]>(`/admin/requests?limit=${limit}`, {
+      timeout: 10000,
+    });
+  }
+
+  /**
+   * Récupère les stats de latence par composant
+   */
+  async getLatencyComponents(): Promise<LatencyComponentStat[]> {
+    return apiRequest<LatencyComponentStat[]>('/admin/metrics/latency/components', {
+      timeout: 10000,
+    });
+  }
+
+  /**
+   * Récupère les tendances de latence
+   */
+  async getLatencyTrend(days: number = 7): Promise<LatencyTrendPoint[]> {
+    return apiRequest<LatencyTrendPoint[]>(`/admin/metrics/latency/trend?days=${days}`, {
+      timeout: 10000,
+    });
+  }
+
+  /**
    * Récupère la répartition des erreurs
    */
   async getErrorDistribution(): Promise<ErrorDistribution> {
@@ -427,8 +534,13 @@ export const apiClient = new ApiClient();
 export type {
   LoginResponse,
   ChatQueryResponse,
+  Conversation,
+  MessageDTO,
   MetricOverview,
   RequestDataPoint,
+  RequestDetail,
+  LatencyComponentStat,
+  LatencyTrendPoint,
   RecentRequest,
   ErrorDistribution,
   SystemStatus,
