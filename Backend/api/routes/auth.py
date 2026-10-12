@@ -8,6 +8,7 @@ from api.models.auth import (
     RegisterResponse,
     UserResponse,
 )
+from api.ratelimit import client_ip, enforce
 from api.services.auth_service import (
     authenticate_user,
     create_access_token,
@@ -57,12 +58,16 @@ def clear_session_cookies(response: Response) -> None:
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(request: LoginRequest, response: Response):
+def login(request: LoginRequest, http_request: Request, response: Response):
     """Authentifie l'utilisateur : pose les cookies de session httpOnly.
 
     Le jeton d'accès est aussi renvoyé dans `token` pour les clients non navigateur
     (scripts, évaluation) qui l'envoient en en-tête `Authorization: Bearer`.
     """
+    settings = get_settings()
+    enforce(f"auth:ip:{client_ip(http_request)}", settings.RATE_LIMIT_AUTH_PER_MINUTE)
+    # frein au bourrage d'identifiants : par compte, quelle que soit l'adresse
+    enforce(f"login:account:{request.email.lower()}", settings.RATE_LIMIT_LOGIN_ACCOUNT_PER_MINUTE)
     user = authenticate_user(request.email, request.password)
     if not user:
         return LoginResponse(success=False, error="Email ou mot de passe incorrect")
@@ -72,8 +77,9 @@ def login(request: LoginRequest, response: Response):
 
 
 @router.post("/register", response_model=RegisterResponse)
-def register(request: RegisterRequest, response: Response):
+def register(request: RegisterRequest, http_request: Request, response: Response):
     """Crée un compte (rôle `user`) et ouvre la session."""
+    enforce(f"auth:ip:{client_ip(http_request)}", get_settings().RATE_LIMIT_AUTH_PER_MINUTE)
     user = create_user(
         email=request.email,
         password=request.password,

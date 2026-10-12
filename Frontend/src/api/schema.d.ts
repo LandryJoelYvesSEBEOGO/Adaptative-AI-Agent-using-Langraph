@@ -547,6 +547,16 @@ export interface components {
              */
             role: "admin" | "user";
         };
+        /** Alert */
+        Alert: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "error_rate" | "latency";
+            /** Message */
+            message: string;
+        };
         /** Body_upload_document_api_v1_documents_post */
         Body_upload_document_api_v1_documents_post: {
             /** Company */
@@ -884,6 +894,11 @@ export interface components {
         };
         /** SystemStatus */
         SystemStatus: {
+            /**
+             * Alerts
+             * @default []
+             */
+            alerts: components["schemas"]["Alert"][];
             /** Availability 24H */
             availability_24h?: number | null;
             /**

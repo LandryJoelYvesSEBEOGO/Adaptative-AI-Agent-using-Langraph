@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
+from api.alerts import notify_if_needed
 from api.dependencies import get_current_user
 from api.models.chat import (
     ChatQueryRequest,
@@ -14,6 +15,7 @@ from api.models.chat import (
     FeedbackRequest,
     FeedbackResponse,
 )
+from api.ratelimit import enforce, enforce_daily_quota
 from api.services import chat_service
 from api.services.conversation_service import (
     add_feedback,
@@ -22,7 +24,8 @@ from api.services.conversation_service import (
     get_conversation,
     prepare_regeneration,
 )
-from api.services.metrics_service import record_request
+from api.services.metrics_service import count_requests_today, record_request
+from config.settings import get_settings
 
 router = APIRouter(
     prefix="/api/v1/chat",
@@ -65,6 +68,7 @@ def _persist_outcome(
         answer_quality_score=result.get("answer_quality_score"),
         answer_quality_scores=result.get("answer_quality_scores"),
     )
+    notify_if_needed()
     return message_id
 
 
@@ -87,7 +91,10 @@ def _persist_stopped(conversation_id: str, question: str, user_id: str, text: st
 
 def _start_turn(request: ChatQueryRequest, current_user: dict) -> tuple[str, str]:
     """Valide la question, résout la conversation et enregistre le message utilisateur
-    (ou, en régénération, retire l'ancienne réponse et reprend la dernière question)."""
+    (ou, en régénération, retire l'ancienne réponse et reprend la dernière question).
+    Les limites d'usage s'appliquent avant toute écriture."""
+    enforce(f"chat:{current_user['id']}", get_settings().RATE_LIMIT_CHAT_PER_MINUTE)
+    enforce_daily_quota(current_user, count_requests_today)
     if request.regenerate:
         if not request.conversation_id:
             raise HTTPException(status_code=400, detail="Conversation requise pour régénérer")

@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 
     # --- Secrets et clés d'API (jamais de valeur par défaut) ---
     JWT_SECRET_KEY: str = ""
+    # Anciennes clés (séparées par des virgules) acceptées en vérification seulement : permet de faire
+    # tourner le secret sans déconnecter tout le monde (voir docs/EXPLOITATION.md)
+    JWT_SECRET_KEY_PREVIOUS: str = ""
     GROQ_API_KEY: str | None = None  # clé principale
     GROQ_API_KEYS_STR: str = Field(default="", validation_alias="GROQ_API_KEYS")
     TAVILY_API_KEY: str | None = None
@@ -44,6 +47,30 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_DAYS: int = 7
     COOKIE_SECURE: bool = False  # true en production (HTTPS)
     COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
+
+    # --- Observabilité ---
+    LOG_FORMAT: Literal["auto", "json", "text"] = "auto"  # auto : json en prod, texte en dev
+    LOG_LEVEL: str = "INFO"
+    LANGFUSE_PUBLIC_KEY: str | None = None  # traces des appels LLM (extra `observability`)
+    LANGFUSE_SECRET_KEY: str | None = None
+    LANGFUSE_HOST: str | None = None
+    ALERT_WEBHOOK_URL: str | None = None  # Slack / Teams / tout endpoint acceptant {"text": ...}
+    ALERT_WINDOW_MINUTES: int = 15
+    ALERT_ERROR_RATE: float = 0.2  # taux d'erreur déclenchant une alerte
+    ALERT_LATENCY_P95_SECONDS: float = 30.0
+    ALERT_MIN_REQUESTS: int = 5  # pas d'alerte sous ce volume (trop peu significatif)
+    ALERT_COOLDOWN_MINUTES: int = 15  # délai minimal entre deux alertes identiques
+
+    # --- Limites d'usage ---
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_AUTH_PER_MINUTE: int = 20  # connexions / inscriptions, par adresse IP
+    RATE_LIMIT_LOGIN_ACCOUNT_PER_MINUTE: int = 5  # tentatives de connexion, par compte
+    RATE_LIMIT_CHAT_PER_MINUTE: int = 20  # questions, par utilisateur
+    DAILY_QUESTION_QUOTA: int = (
+        200  # questions par utilisateur et par jour (0 = illimité) ; admins exemptés
+    )
+    # true derrière un reverse proxy de confiance : l'IP du client est lue dans X-Forwarded-For
+    TRUST_PROXY_HEADERS: bool = False
 
     # --- CORS : origines autorisées, séparées par des virgules ---
     CORS_ORIGINS: str = (
@@ -97,11 +124,19 @@ class Settings(BaseSettings):
         "LANGSMITH_API_KEY",
         "OPENAI_API_KEY",
         "COHERE_API_KEY",
+        "LANGFUSE_PUBLIC_KEY",
+        "LANGFUSE_SECRET_KEY",
+        "LANGFUSE_HOST",
+        "ALERT_WEBHOOK_URL",
         mode="before",
     )
     @classmethod
     def _empty_to_none(cls, value):
         return value or None
+
+    @property
+    def jwt_previous_keys(self) -> list[str]:
+        return [k.strip() for k in self.JWT_SECRET_KEY_PREVIOUS.split(",") if k.strip()]
 
     @property
     def cors_origins(self) -> list[str]:
@@ -129,6 +164,11 @@ class Settings(BaseSettings):
             os.environ["LANGCHAIN_TRACING_V2"] = "true"
             os.environ["LANGCHAIN_API_KEY"] = self.LANGSMITH_API_KEY
             os.environ["LANGCHAIN_PROJECT"] = self.LANGCHAIN_PROJECT
+        if self.LANGFUSE_PUBLIC_KEY and self.LANGFUSE_SECRET_KEY:
+            os.environ["LANGFUSE_PUBLIC_KEY"] = self.LANGFUSE_PUBLIC_KEY
+            os.environ["LANGFUSE_SECRET_KEY"] = self.LANGFUSE_SECRET_KEY
+            if self.LANGFUSE_HOST:
+                os.environ["LANGFUSE_HOST"] = self.LANGFUSE_HOST
         os.environ.setdefault("TOKENIZERS_PARALLELISM", "true")
         os.environ.setdefault("USER_AGENT", "RagSystem/1.0")
 

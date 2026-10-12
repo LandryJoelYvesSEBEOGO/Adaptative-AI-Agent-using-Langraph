@@ -1,14 +1,6 @@
-import logging
-import time
-import traceback
-
-from fastapi import Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from config.settings import get_settings
-
-logger = logging.getLogger(__name__)
 
 
 def setup_cors(app):
@@ -22,70 +14,3 @@ def setup_cors(app):
         expose_headers=["*"],
         max_age=3600,  # Cache les prérequêtes CORS pendant 1 heure
     )
-
-
-async def log_requests(request: Request, call_next):
-    """Middleware pour logger les requêtes avec détails améliorés."""
-    start_time = time.time()
-    origin = request.headers.get("origin", "N/A")
-
-    # Logger les requêtes OPTIONS (preflight CORS) avec moins de détails
-    if request.method == "OPTIONS":
-        logger.debug(f"OPTIONS preflight: {request.url.path} from {origin}")
-    else:
-        logger.info(
-            f"Request: {request.method} {request.url.path} | "
-            f"Origin: {origin} | "
-            f"IP: {request.client.host if request.client else 'N/A'}"
-        )
-
-    try:
-        response = await call_next(request)
-        process_time = time.time() - start_time
-
-        # Logger les réponses avec codes de statut colorés
-        if request.method != "OPTIONS":
-            status_emoji = (
-                "✅"
-                if 200 <= response.status_code < 300
-                else "⚠️"
-                if 300 <= response.status_code < 400
-                else "❌"
-                if 400 <= response.status_code < 500
-                else "🔥"
-                if response.status_code >= 500
-                else "❓"
-            )
-
-            logger.info(
-                f"{status_emoji} Response: {response.status_code} | "
-                f"Path: {request.url.path} | "
-                f"Time: {process_time:.3f}s"
-            )
-
-        return response
-
-    except Exception as e:
-        process_time = time.time() - start_time
-        error_type = type(e).__name__
-        error_message = str(e)
-
-        logger.error(
-            f"🔥 Exception: {error_type} | "
-            f"Path: {request.url.path} | "
-            f"Method: {request.method} | "
-            f"Time: {process_time:.3f}s | "
-            f"Error: {error_message}"
-        )
-        logger.debug(f"Traceback: {traceback.format_exc()}")
-
-        # Retourner une réponse d'erreur structurée
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "success": False,
-                "error": "Erreur serveur interne",
-                "type": error_type,
-                "path": request.url.path,
-            },
-        )

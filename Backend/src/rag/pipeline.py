@@ -25,6 +25,7 @@ from src.rag.query_analysis import Analyzer, heuristic_filters
 from src.rag.schemas import QueryAnalysis, SourceDocument
 from src.rag.search import SearchResult
 from src.rag.store import Filters, Retrieved
+from src.rag.tracing import tracing_callbacks
 from src.rag.websearch import WebSearch
 
 NO_SOURCE_MESSAGE = (
@@ -198,6 +199,7 @@ def get_dependencies() -> Dependencies:
     from src.rag.websearch import tavily_search
 
     settings = get_settings()
+    settings.export_runtime_env()  # LangSmith / Tavily / Langfuse : variables lues par les bibliothèques
     if not settings.GROQ_API_KEYS:
         raise RuntimeError("GROQ_API_KEY est requis pour générer des réponses")
     llm = ChatGroq(
@@ -248,7 +250,10 @@ async def stream_rag(
     streamed = False
     async for mode, data in graph.astream(
         {"question": question, "history": history, "llm_calls": 0, "latencies": {}},
-        config={"configurable": {"cancel_event": cancel_event}},
+        config={
+            "configurable": {"cancel_event": cancel_event},
+            "callbacks": tracing_callbacks(),
+        },
         stream_mode=["messages", "values"],
     ):
         if mode == "messages":

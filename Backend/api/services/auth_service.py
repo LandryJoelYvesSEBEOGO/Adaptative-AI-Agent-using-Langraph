@@ -69,12 +69,17 @@ def create_refresh_token(user_id: str) -> str:
 
 
 def decode_token(token: str, expected_type: str) -> Optional[dict]:
-    """Décode et vérifie un jeton ; None s'il est invalide, expiré ou d'un autre type."""
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
-        return None
-    return payload if payload.get("type") == expected_type else None
+    """Décode et vérifie un jeton ; None s'il est invalide, expiré ou d'un autre type.
+
+    Accepte aussi les jetons signés avec une ancienne clé (JWT_SECRET_KEY_PREVIOUS) : pendant une
+    rotation du secret, les sessions ouvertes restent valables jusqu'à leur expiration."""
+    for key in (SECRET_KEY, *get_settings().jwt_previous_keys):
+        try:
+            payload = jwt.decode(token, key, algorithms=[ALGORITHM])
+        except JWTError:
+            continue
+        return payload if payload.get("type") == expected_type else None
+    return None
 
 
 def authenticate_user(email: str, password: str) -> Optional[dict]:

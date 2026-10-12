@@ -18,6 +18,7 @@ import {
   useRequestsChart,
   useSystemStatus,
 } from "@/api/hooks";
+import AlertsBanner from "@/components/admin/AlertsBanner";
 import QueryError from "@/components/QueryError";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +91,8 @@ const AdminDashboard = () => {
           }}
         />
       )}
+
+      <AlertsBanner alerts={systemStatus?.alerts} />
 
       {/* Metrics Grid with enhanced cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -10,17 +10,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from api.database import run_migrations
-from api.middleware import log_requests, setup_cors
+from api.middleware import setup_cors
+from api.observability import configure_logging, log_requests
 from api.routes import admin, auth, chat, conversation, documents
 from api.services.auth_service import seed_initial_users
 from config.settings import get_settings
 
-# Configuration du logging avec format amélioré
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+configure_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -46,46 +42,20 @@ app = FastAPI(
 setup_cors(app)
 
 
-# Handler global pour les erreurs
+# Handler global : le client ne reçoit jamais le détail de l'exception (journalisé côté serveur)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Gestionnaire global d'exceptions pour améliorer l'affichage des erreurs."""
-    import traceback
-
-    error_type = type(exc).__name__
-    error_message = str(exc)
-    path = request.url.path
-    method = request.method
-
-    logger.error(
-        f"🔥 Exception globale: {error_type} | "
-        f"Path: {path} | "
-        f"Method: {method} | "
-        f"Error: {error_message}"
+    logger.exception(
+        "unhandled exception",
+        extra={
+            "method": request.method,
+            "path": request.url.path,
+            "error_type": type(exc).__name__,
+        },
     )
-    logger.debug(f"Traceback complet:\n{traceback.format_exc()}")
-
-    # Si c'est une HTTPException de FastAPI, la laisser passer
-    from fastapi import HTTPException
-
-    if isinstance(exc, HTTPException):
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={
-                "success": False,
-                "error": exc.detail,
-                "path": path,
-            },
-        )
-
-    # Pour les autres exceptions, retourner une erreur 500
     return JSONResponse(
         status_code=500,
-        content={
-            "success": False,
-            "error": "Erreur serveur interne",
-            "path": path,
-        },
+        content={"success": False, "error": "Erreur serveur interne", "path": request.url.path},
     )
 
 

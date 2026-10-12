@@ -21,6 +21,7 @@ state = SimpleNamespace(search_delay=0.0, llm=None, deps=None)
 def install() -> SimpleNamespace:
     os.environ.setdefault("JWT_SECRET_KEY", "test-secret-" + "x" * 40)
     os.environ.setdefault("RAG_DB_PATH", str(Path(tempfile.mkdtemp()) / "test.db"))
+    os.environ.setdefault("RATE_LIMIT_ENABLED", "false")  # les tests dédiés l'activent
     os.environ.setdefault("ADMIN_EMAIL", "boss@example.com")
     os.environ.setdefault("ADMIN_PASSWORD", "Sup3rS3cret!")
 
