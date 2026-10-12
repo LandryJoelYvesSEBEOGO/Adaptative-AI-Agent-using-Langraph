@@ -99,7 +99,6 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-[#EAEAEA] relative">
       {/* Background effects */}
-      <div className="absolute inset-0 pointer-events-none opacity-40 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
       <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-gradient-to-b from-white/60 to-transparent opacity-50 blur-3xl pointer-events-none rounded-full translate-x-1/3 -translate-y-1/3"></div>
 
       {/* Auth Modal (Login/Register) */}
