@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -27,7 +27,16 @@ class ChatQueryResponse(BaseModel):
     error: Optional[str] = None
 
 
+FeedbackType = Literal["thumbs_up", "thumbs_down"]
+
+
 class FeedbackRequest(BaseModel):
     message_id: str
-    feedback_type: str  # "thumbs_up" | "thumbs_down"
-    comment: Optional[str] = None
+    feedback_type: FeedbackType
+    comment: Optional[str] = Field(default=None, max_length=2000)
+
+
+class FeedbackResponse(BaseModel):
+    success: bool
+    message_id: str
+    feedback_type: FeedbackType

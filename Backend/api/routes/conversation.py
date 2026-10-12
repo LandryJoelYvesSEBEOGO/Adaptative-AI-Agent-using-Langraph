@@ -46,7 +46,7 @@ def get_messages(
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation introuvable")
 
-    msgs = list_messages(conversation_id)
+    msgs = list_messages(conversation_id, current_user["id"])
     return msgs
 
 

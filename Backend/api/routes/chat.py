@@ -8,7 +8,12 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 from api.dependencies import get_current_user
-from api.models.chat import ChatQueryRequest, ChatQueryResponse, FeedbackRequest
+from api.models.chat import (
+    ChatQueryRequest,
+    ChatQueryResponse,
+    FeedbackRequest,
+    FeedbackResponse,
+)
 from api.services import chat_service
 from api.services.conversation_service import (
     add_feedback,
@@ -205,14 +210,9 @@ def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
-@router.post("/feedback")
+@router.post("/feedback", response_model=FeedbackResponse)
 def submit_feedback(request: FeedbackRequest, current_user: dict = Depends(get_current_user)):
-    """
-    Enregistre le feedback utilisateur (thumbs up/down).
-    """
-    if request.feedback_type not in ("thumbs_up", "thumbs_down"):
-        raise HTTPException(status_code=400, detail="feedback_type invalide")
-
+    """Enregistre (ou remplace) l'avis de l'utilisateur sur une réponse de SA conversation."""
     if not add_feedback(
         message_id=request.message_id,
         user_id=current_user["id"],
@@ -221,9 +221,6 @@ def submit_feedback(request: FeedbackRequest, current_user: dict = Depends(get_c
     ):
         raise HTTPException(status_code=404, detail="Message introuvable")
 
-    return {
-        "success": True,
-        "message": "Feedback enregistré avec succès",
-        "message_id": request.message_id,
-        "feedback_type": request.feedback_type,
-    }
+    return FeedbackResponse(
+        success=True, message_id=request.message_id, feedback_type=request.feedback_type
+    )

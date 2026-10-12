@@ -25,8 +25,8 @@ REFRESH_COOKIE = "refresh_token"
 REFRESH_PATH = "/api/v1/auth"  # le refresh token ne part que vers les routes d'authentification
 
 
-def _public(user: dict) -> dict:
-    return {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"]}
+def _public(user: dict) -> UserResponse:
+    return UserResponse(id=user["id"], email=user["email"], name=user["name"], role=user["role"])
 
 
 def set_session_cookies(response: Response, user_id: str) -> str:

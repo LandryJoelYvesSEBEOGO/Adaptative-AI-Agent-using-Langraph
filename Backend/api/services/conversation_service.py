@@ -80,14 +80,19 @@ def add_message(
         return _msg_dict(msg)
 
 
-def list_messages(conversation_id: str) -> List[Dict]:
+def list_messages(conversation_id: str, user_id: Optional[str] = None) -> List[Dict]:
+    """Messages d'une conversation ; avec `user_id`, joint l'avis donné par cet utilisateur."""
     with session_scope() as db:
-        rows = db.scalars(
-            select(Message)
-            .where(Message.conversation_id == conversation_id)
-            .order_by(Message.created_at.asc())
+        stmt = select(Message, Feedback.feedback_type).outerjoin(
+            Feedback,
+            (Feedback.message_id == Message.id) & (Feedback.user_id == user_id),
         )
-        return [_msg_dict(m) for m in rows]
+        rows = db.execute(
+            stmt.where(Message.conversation_id == conversation_id).order_by(
+                Message.created_at.asc()
+            )
+        )
+        return [{**_msg_dict(m), "feedback": feedback} for m, feedback in rows]
 
 
 def add_feedback(
