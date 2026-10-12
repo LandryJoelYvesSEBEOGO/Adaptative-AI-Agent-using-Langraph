@@ -1,11 +1,7 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Brain, 
-  X, 
-  AlertCircle, 
   ArrowRight, 
-  User, 
   AlertTriangle,
   Clock,
   ShieldAlert,
@@ -15,305 +11,21 @@ import {
   Star,
   Zap,
   Check,
-  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import ThemeToggle from "@/components/ThemeToggle";
-import { useAuthStore } from "@/stores/authStore";
+import { useSession } from "@/auth/session";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user, login, register } = useAuthStore();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<"admin" | "user">("user");
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-    setIsLoading(true);
-    
-    const result = await login(email, password);
-    
-    if (result.success) {
-      setIsAuthModalOpen(false);
-      setEmail("");
-      setPassword("");
-      const currentUser = useAuthStore.getState().user;
-      if (currentUser?.role === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/chat");
-      }
-    } else {
-      setAuthError(result.error || "Erreur de connexion");
-    }
-    setIsLoading(false);
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-    setIsLoading(true);
-    
-    if (!name.trim()) {
-      setAuthError("Le nom est requis");
-      setIsLoading(false);
-      return;
-    }
-
-    if (password.length < 4) {
-      setAuthError("Le mot de passe doit contenir au moins 4 caractères");
-      setIsLoading(false);
-      return;
-    }
-    
-    const result = await register(email, password, name, role);
-    
-    if (result.success) {
-      setIsAuthModalOpen(false);
-      setEmail("");
-      setPassword("");
-      setName("");
-      setRole("user");
-      const currentUser = useAuthStore.getState().user;
-      if (currentUser?.role === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/chat");
-      }
-    } else {
-      setAuthError(result.error || "Erreur lors de l'inscription");
-    }
-    setIsLoading(false);
-  };
+  const { data: user } = useSession();
+  const isAuthenticated = Boolean(user);
 
   return (
     <div className="min-h-screen bg-[#EAEAEA] relative">
       {/* Background effects */}
       <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-linear-to-b from-white/60 to-transparent opacity-50 blur-3xl pointer-events-none rounded-full translate-x-1/3 -translate-y-1/3"></div>
-
-      {/* Auth Modal (Login/Register) */}
-      {isAuthModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div 
-            onClick={() => {
-              setIsAuthModalOpen(false);
-              setAuthError(null);
-              setEmail("");
-              setPassword("");
-              setName("");
-              setRole("user");
-            }}
-            className="absolute inset-0 bg-neutral-900/60 backdrop-blur-xs transition-opacity"
-          ></div>
-          <Card className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative z-10">
-            <button
-              onClick={() => {
-                setIsAuthModalOpen(false);
-                setAuthError(null);
-                setEmail("");
-                setPassword("");
-                setName("");
-                setRole("user");
-              }}
-              className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-neutral-900 rounded-full hover:bg-neutral-100 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            
-            {/* Tabs */}
-            <div className="flex gap-2 mb-8 border-b border-neutral-200">
-              <button
-                onClick={() => {
-                  setAuthMode("login");
-                  setAuthError(null);
-                }}
-                className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-                  authMode === "login"
-                    ? "text-neutral-900 border-b-2 border-neutral-900"
-                    : "text-neutral-500 hover:text-neutral-700"
-                }`}
-              >
-                Connexion
-              </button>
-              <button
-                onClick={() => {
-                  setAuthMode("register");
-                  setAuthError(null);
-                }}
-                className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-                  authMode === "register"
-                    ? "text-neutral-900 border-b-2 border-neutral-900"
-                    : "text-neutral-500 hover:text-neutral-700"
-                }`}
-              >
-                Inscription
-              </button>
-            </div>
-
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-neutral-900 text-white mb-4 shadow-lg">
-                <User className="w-7 h-7" />
-              </div>
-              <h3 className="text-2xl font-bold tracking-tight">
-                {authMode === "login" ? "Bienvenue sur RAG System" : "Créer un compte"}
-              </h3>
-              <p className="text-base text-neutral-500 mt-2">
-                {authMode === "login" 
-                  ? "Connectez-vous pour accéder à la plateforme"
-                  : "Rejoignez RAG System et commencez à utiliser notre plateforme"}
-              </p>
-              {authError && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg">
-                  <div className="flex items-center gap-2 text-red-600">
-                    <AlertCircle className="w-4 h-4" />
-                    <span className="text-xs font-medium">{authError}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {authMode === "login" ? (
-              <form className="space-y-4" onSubmit={handleLogin}>
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 uppercase tracking-widest mb-1.5">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
-                    placeholder="admin@rag-system.io"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 uppercase tracking-widest mb-1.5">
-                    Mot de passe
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
-                    placeholder="••••••••"
-                  />
-                </div>
-                <Button 
-                  type="submit" 
-                  disabled={isLoading}
-                  className="w-full py-6 bg-neutral-900 hover:bg-neutral-800 text-white disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Connexion...
-                    </>
-                  ) : (
-                    "Se connecter"
-                  )}
-                </Button>
-              </form>
-            ) : (
-              <form className="space-y-4" onSubmit={handleRegister}>
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 uppercase tracking-widest mb-1.5">
-                    Nom complet
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
-                    placeholder="Jean Dupont"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 uppercase tracking-widest mb-1.5">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
-                    placeholder="jean.dupont@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 uppercase tracking-widest mb-1.5">
-                    Mot de passe
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={4}
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50 text-sm focus:outline-hidden focus:ring-2 focus:ring-neutral-900 focus:bg-white transition-all placeholder:text-neutral-400"
-                    placeholder="••••••••"
-                  />
-                  <p className="text-xs text-neutral-500 mt-1">Minimum 4 caractères</p>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 uppercase tracking-widest mb-1.5">
-                    Type de compte
-                  </label>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setRole("user")}
-                      className={`flex-1 px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
-                        role === "user"
-                          ? "bg-neutral-900 text-white border-neutral-900"
-                          : "bg-neutral-50 text-neutral-700 border-neutral-200 hover:border-neutral-300"
-                      }`}
-                    >
-                      Utilisateur
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRole("admin")}
-                      className={`flex-1 px-4 py-3 rounded-lg border text-sm font-medium transition-all ${
-                        role === "admin"
-                          ? "bg-neutral-900 text-white border-neutral-900"
-                          : "bg-neutral-50 text-neutral-700 border-neutral-200 hover:border-neutral-300"
-                      }`}
-                    >
-                      Administrateur
-                    </button>
-                  </div>
-                </div>
-                <Button 
-                  type="submit" 
-                  disabled={isLoading}
-                  className="w-full py-6 bg-neutral-900 hover:bg-neutral-800 text-white disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Inscription...
-                    </>
-                  ) : (
-                    "Créer un compte"
-                  )}
-                </Button>
-              </form>
-            )}
-          </Card>
-        </div>
-      )}
 
       {/* Navigation */}
       <nav className="flex flex-wrap md:px-12 z-30 bg-stone-100 pt-6 pr-6 pb-6 pl-6 relative gap-x-20 gap-y-6 items-center justify-between">
@@ -370,7 +82,7 @@ const Index = () => {
             </>
           ) : (
             <Button
-              onClick={() => setIsAuthModalOpen(true)}
+              onClick={() => navigate("/login")}
               className="uppercase text-xs bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
             >
               Se connecter
@@ -428,7 +140,7 @@ const Index = () => {
               </h2>
               <div className="mt-8 flex gap-4">
                 <Button
-                  onClick={() => setIsAuthModalOpen(true)}
+                  onClick={() => navigate("/login")}
                   size="lg"
                   className="px-8 py-4 bg-neutral-900 hover:bg-neutral-800 text-white"
                 >
@@ -653,7 +365,7 @@ const Index = () => {
                 </li>
               </ul>
             </div>
-            <Button onClick={() => setIsAuthModalOpen(true)} className="w-full" variant="outline">
+            <Button onClick={() => navigate("/login")} className="w-full" variant="outline">
               Accéder au Chat
             </Button>
           </Card>
@@ -685,7 +397,7 @@ const Index = () => {
                 </li>
               </ul>
             </div>
-            <Button onClick={() => setIsAuthModalOpen(true)} className="w-full bg-white text-neutral-900 hover:bg-neutral-200">
+            <Button onClick={() => navigate("/login")} className="w-full bg-white text-neutral-900 hover:bg-neutral-200">
               Accéder au Dashboard
             </Button>
           </Card>

@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -11,7 +13,8 @@ SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 
 def _check_csrf(request: Request) -> None:
-    """Requêtes à effet de bord authentifiées par cookie : l'origine doit être autorisée.
+    """Requêtes à effet de bord authentifiées par cookie : l'origine doit être celle du site
+    lui-même (frontend servi derrière le même hôte) ou figurer dans CORS_ORIGINS.
 
     SameSite protège déjà contre l'essentiel ; ce contrôle ferme le reste (sous-domaines,
     navigateurs anciens). Les clients qui utilisent l'en-tête Bearer ne sont pas concernés."""
@@ -19,7 +22,8 @@ def _check_csrf(request: Request) -> None:
     if origin is None:
         referer = request.headers.get("referer", "")
         origin = "/".join(referer.split("/")[:3]) if referer else None
-    if origin not in get_settings().cors_origins:
+    same_origin = origin is not None and urlparse(origin).netloc == request.headers.get("host")
+    if not same_origin and origin not in get_settings().cors_origins:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Origine non autorisée")
 
 

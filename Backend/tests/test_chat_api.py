@@ -78,6 +78,7 @@ def test_stream_emits_tokens_then_citations_then_done(client, auth):
         events = [line[6:] for line in r.iter_lines() if line.startswith("data: ")]
     assert events[-1] == "[DONE]"
     parsed = [json.loads(e) for e in events[:-1]]
+    assert list(parsed[0]) == ["conversation_id"]  # annoncé avant tout fragment
     chunks = [p["chunk"] for p in parsed if "chunk" in p]
     final = parsed[-1]
     assert len(chunks) >= 4 and "".join(chunks).strip() == "Capex was 1577 million [1]."

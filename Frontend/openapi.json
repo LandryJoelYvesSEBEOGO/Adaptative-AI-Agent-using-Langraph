@@ -775,6 +775,10 @@
             "type": "string"
           },
           "status": {
+            "enum": [
+              "success",
+              "error"
+            ],
             "title": "Status",
             "type": "string"
           },
@@ -918,6 +922,10 @@
             "type": "string"
           },
           "status": {
+            "enum": [
+              "success",
+              "error"
+            ],
             "title": "Status",
             "type": "string"
           },

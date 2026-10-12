@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Clock, Database, Search } from "lucide-react";
 import MetricCard from "@/components/admin/MetricCard";
@@ -14,43 +14,15 @@ import {
   Line,
   Legend,
 } from "recharts";
-import {
-  apiClient,
-  ApiError,
-  LatencyComponentStat,
-  LatencyTrendPoint,
-} from "@/services/api";
-import { useToast } from "@/hooks/use-toast";
+import { useLatencyComponents, useLatencyTrend } from "@/api/hooks";
+import QueryError from "@/components/QueryError";
 
 const AdminMetrics = () => {
-  const [latencyData, setLatencyData] = useState<LatencyComponentStat[]>([]);
-  const [latencyTrend, setLatencyTrend] = useState<LatencyTrendPoint[]>([]);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const loadMetrics = async () => {
-      try {
-        const [components, trend] = await Promise.all([
-          apiClient.getLatencyComponents(),
-          apiClient.getLatencyTrend(7),
-        ]);
-        setLatencyData(components);
-        setLatencyTrend(trend);
-      } catch (error) {
-        const apiError =
-          error instanceof ApiError
-            ? error
-            : new ApiError(error instanceof Error ? error.message : "Erreur lors du chargement");
-        toast({
-          title: "Erreur",
-          description: apiError.getUserMessage(),
-          variant: "destructive",
-        });
-      }
-    };
-
-    loadMetrics();
-  }, [toast]);
+  const componentsQuery = useLatencyComponents();
+  const trendQuery = useLatencyTrend(7);
+  const latencyData = useMemo(() => componentsQuery.data ?? [], [componentsQuery.data]);
+  const latencyTrend = trendQuery.data ?? [];
+  const failed = [componentsQuery, trendQuery].find((query) => query.isError);
 
   const endToEndStats = useMemo(
     () => latencyData.find((item) => item.name === "End-to-End"),
@@ -67,6 +39,8 @@ const AdminMetrics = () => {
           Analyse détaillée des latences et performances du système
         </p>
       </div>
+
+      {failed && <QueryError error={failed.error} onRetry={() => void failed.refetch()} />}
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -11,7 +11,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/stores/authStore";
+import { useLogout, useSession } from "@/auth/session";
 import SidebarLink from "./SidebarLink";
 import { Button } from "@/components/ui/button";
 
@@ -30,12 +30,12 @@ const navItems = [
 ];
 
 const AdminSidebar = ({ collapsed, onToggle }: AdminSidebarProps) => {
-  const { logout, user } = useAuthStore();
+  const { data: user } = useSession();
+  const logout = useLogout();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logout();
-    navigate("/");
+    logout.mutate(undefined, { onSettled: () => navigate("/") });
   };
 
   return (

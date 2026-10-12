@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   Server,
   CheckCircle2,
@@ -13,61 +12,29 @@ import RecentActivity from "@/components/admin/RecentActivity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import {
-  apiClient,
-  ApiError,
-  ErrorDistribution,
-  MetricOverview,
-  RequestDataPoint,
-  RecentRequest,
-  SystemStatus,
-} from "@/services/api";
-import { useToast } from "@/hooks/use-toast";
+  useErrorDistribution,
+  useMetricsOverview,
+  useRecentRequests,
+  useRequestsChart,
+  useSystemStatus,
+} from "@/api/hooks";
+import QueryError from "@/components/QueryError";
 
 const AdminDashboard = () => {
-  const [overview, setOverview] = useState<MetricOverview | null>(null);
-  const [chartData, setChartData] = useState<RequestDataPoint[]>([]);
-  const [errorDistribution, setErrorDistribution] = useState<ErrorDistribution | null>(null);
-  const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
-  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
-  const { toast } = useToast();
+  const overviewQuery = useMetricsOverview();
+  const chartQuery = useRequestsChart(7);
+  const errorsQuery = useErrorDistribution();
+  const recentQuery = useRecentRequests(10);
+  const statusQuery = useSystemStatus();
 
-  useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const [
-          overviewData,
-          chartDataResponse,
-          errorDistributionResponse,
-          recentRequestsResponse,
-          systemStatusResponse,
-        ] = await Promise.all([
-          apiClient.getMetricsOverview(),
-          apiClient.getMetricsRequests(7),
-          apiClient.getErrorDistribution(),
-          apiClient.getRecentRequests(10),
-          apiClient.getSystemStatus(),
-        ]);
-
-        setOverview(overviewData);
-        setChartData(chartDataResponse);
-        setErrorDistribution(errorDistributionResponse);
-        setRecentRequests(recentRequestsResponse);
-        setSystemStatus(systemStatusResponse);
-      } catch (error) {
-        const apiError =
-          error instanceof ApiError
-            ? error
-            : new ApiError(error instanceof Error ? error.message : "Erreur lors du chargement");
-        toast({
-          title: "Erreur",
-          description: apiError.getUserMessage(),
-          variant: "destructive",
-        });
-      }
-    };
-
-    loadDashboard();
-  }, [toast]);
+  const overview = overviewQuery.data;
+  const chartData = chartQuery.data ?? [];
+  const errorDistribution = errorsQuery.data;
+  const recentRequests = recentQuery.data ?? [];
+  const systemStatus = statusQuery.data;
+  const failed = [overviewQuery, chartQuery, errorsQuery, recentQuery, statusQuery].find(
+    (query) => query.isError,
+  );
 
   const errorChartData = errorDistribution
     ? [
@@ -96,6 +63,17 @@ const AdminDashboard = () => {
           </p>
         </div>
       </div>
+
+      {failed && (
+        <QueryError
+          error={failed.error}
+          onRetry={() => {
+            for (const query of [overviewQuery, chartQuery, errorsQuery, recentQuery, statusQuery]) {
+              if (query.isError) void query.refetch();
+            }
+          }}
+        />
+      )}
 
       {/* Metrics Grid with enhanced cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

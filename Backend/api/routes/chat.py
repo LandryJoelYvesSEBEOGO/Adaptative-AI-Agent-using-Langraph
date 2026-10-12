@@ -159,6 +159,9 @@ async def query_rag_stream(
                 )
 
         try:
+            # Premier événement : l'identifiant de conversation, connu avant la première réponse
+            # (nécessaire au client pour retrouver l'échange s'il interrompt la génération)
+            yield _sse({"conversation_id": conversation_id})
             while (event := await queue.get()) is not None:
                 if flag["stopped"]:
                     continue  # on vide le flux : la réponse partielle est enregistrée plus bas

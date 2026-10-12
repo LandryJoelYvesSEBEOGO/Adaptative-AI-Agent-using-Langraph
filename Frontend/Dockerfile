@@ -3,9 +3,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# URL de l'API vue par le navigateur (injectée au build)
-ARG VITE_API_BASE_URL=http://localhost:8000/api/v1
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Origine de l'API vue par le navigateur ; vide = même origine (proxy nginx /api)
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 FROM nginx:1.27-alpine

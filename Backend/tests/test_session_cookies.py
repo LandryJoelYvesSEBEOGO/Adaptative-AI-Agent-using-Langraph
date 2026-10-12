@@ -66,6 +66,11 @@ def test_csrf_unsafe_requests_with_cookie_need_an_allowed_origin(client):
     assert evil.status_code == 403
     ok = client.post("/api/v1/chat/conversations", json=body, headers={"Origin": ORIGIN})
     assert ok.status_code == 200
+    # même origine que l'hôte interrogé (frontend servi derrière le même domaine) : accepté
+    same = client.post(
+        "/api/v1/chat/conversations", json=body, headers={"Origin": "http://testserver"}
+    )
+    assert same.status_code == 200
     # les lectures (GET) restent possibles sans Origin
     assert client.get("/api/v1/chat/conversations").status_code == 200
 

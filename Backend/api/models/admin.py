@@ -32,7 +32,7 @@ class RecentRequest(BaseModel):
     timestamp: str
     user: str
     question: str
-    status: str  # "success" | "error"
+    status: Literal["success", "error"]
     latency: float
 
 
@@ -41,7 +41,7 @@ class RequestDetail(BaseModel):
     timestamp: str
     user: str
     question: str
-    status: str  # "success" | "error"
+    status: Literal["success", "error"]
     latency: float
     docs_count: int
     quality: float
