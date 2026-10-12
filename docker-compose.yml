@@ -4,7 +4,7 @@
 # et JWT_SECRET_KEY. DATABASE_URL est fourni ci-dessous pour le conteneur.
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: rag
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rag}

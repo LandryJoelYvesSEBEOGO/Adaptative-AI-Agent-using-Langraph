@@ -1,220 +1,274 @@
-"""
-Script de test pour valider l'implémentation du Hybrid Search (Vector + BM25)
-"""
+"""L3.3 : fusion RRF, fournisseurs hébergés (simulés) et recherche hybride sur PostgreSQL."""
 
-import os
-import sys
-import time
+import hashlib
+import math
+import re
 
-# Ajouter le répertoire racine au sys.path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+import httpx
+import pytest
 
-from src.rag.Data_processing import get_retriever
+from tests.api_stub import install
 
+install()
 
-def print_header(text):
-    """Affiche un en-tête formaté."""
-    print("\n" + "=" * 60)
-    print(f"  {text}")
-    print("=" * 60)
+from api.database import get_engine, run_migrations, session_scope  # noqa: E402
+from api.db_models import Chunk, Document  # noqa: E402
+from config.settings import get_settings  # noqa: E402
+from src.rag.embeddings import CohereEmbedder, OpenAIEmbedder  # noqa: E402
+from src.rag.rerankers import CohereReranker, NoReranker  # noqa: E402
+from src.rag.search import SearchResult, search_documents  # noqa: E402
+from src.rag.store import (  # noqa: E402
+    Filters,
+    add_chunks,
+    hybrid_search,
+    reciprocal_rank_fusion,
+    to_or_tsquery,
+)
 
-
-def print_test(text):
-    """Affiche un message de test."""
-    print(f"\n[TEST] {text}")
-
-
-def print_info(text):
-    """Affiche une information."""
-    print(f"[INFO] {text}")
+# ---------- fonctions pures ----------
 
 
-def print_success(text):
-    """Affiche un succès."""
-    print(f"[SUCCESS] ✅ {text}")
+def test_rrf_rewards_items_ranked_by_both_branches():
+    fused = reciprocal_rank_fusion([[1, 2, 3], [3, 1, 4]], k=60)
+    order = [item for item, _ in fused]
+    assert order[:2] == [1, 3]  # présents dans les deux classements
+    assert set(order) == {1, 2, 3, 4}
+    assert fused[0][1] == pytest.approx(1 / 61 + 1 / 62)
 
 
-def print_error(text):
-    """Affiche une erreur."""
-    print(f"[ERROR] ❌ {text}")
+def test_rrf_handles_empty_branches():
+    assert reciprocal_rank_fusion([[], []]) == []
+    assert [i for i, _ in reciprocal_rank_fusion([[7, 8], []])] == [7, 8]
 
 
-def print_warning(text):
-    """Affiche un avertissement."""
-    print(f"[WARNING] ⚠️ {text}")
+def test_to_or_tsquery():
+    query = to_or_tsquery("Net sales of AT&T in fiscal 2019")
+    assert query is not None
+    assert {"net", "sales", "fiscal", "2019", "att"} <= set(query.split(" | "))
+    assert to_or_tsquery("a b ?!") is None
 
 
-def test_retriever_creation():
-    """Test 1: Création du retriever avec Hybrid Search activé."""
-    print_header("TEST 1: Création du Retriever (Hybrid Search)")
-
-    try:
-        print_test("Création du retriever avec hybrid search activé...")
-        print_info("⏳ Cela peut prendre quelques secondes...")
-
-        start_time = time.time()
-        retriever = get_retriever(k=3, use_hybrid=True)
-        elapsed_time = time.time() - start_time
-
-        print_success(f"Retriever créé avec succès en {elapsed_time:.2f}s")
-
-        # Vérifier le type de retriever
-        from langchain.retrievers import EnsembleRetriever
-
-        if isinstance(retriever, EnsembleRetriever):
-            print_success("Type: EnsembleRetriever (Hybrid Search activé)")
-            print_info(f"Nombre de retrievers: {len(retriever.retrievers)}")
-            print_info(f"Poids: {retriever.weights}")
-        else:
-            print_warning(f"Type: {type(retriever).__name__} (Vector seulement)")
-
-        return retriever, True
-
-    except Exception as e:
-        print_error(f"Erreur lors de la création du retriever: {str(e)}")
-        import traceback
-
-        traceback.print_exc()
-        return None, False
+# ---------- fournisseurs hébergés (HTTP simulé) ----------
 
 
-def test_retriever_retrieval(retriever):
-    """Test 2: Test de récupération de documents."""
-    print_header("TEST 2: Récupération de Documents")
+def test_openai_embedder_batches_and_orders_results():
+    calls = []
 
-    if retriever is None:
-        print_error("Retriever non disponible, test ignoré")
-        return False
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
 
-    try:
-        test_queries = [
-            "What is a Large Language Model?",
-            "How does prompt engineering work?",
-            "What are transformer models?",
-        ]
+        body = json.loads(request.read())
+        calls.append(body)
+        assert request.headers["authorization"] == "Bearer k"
+        assert body["dimensions"] == 4
+        # renvoie volontairement dans le désordre
+        data = [{"index": i, "embedding": [float(i)] * 4} for i in range(len(body["input"]))]
+        return httpx.Response(200, json={"data": list(reversed(data))})
 
-        for i, query in enumerate(test_queries, 1):
-            print_test(f"Requête {i}: {query}")
-
-            start_time = time.time()
-            documents = retriever.get_relevant_documents(query)
-            elapsed_time = time.time() - start_time
-
-            if documents and len(documents) > 0:
-                print_success(f"✅ {len(documents)} documents récupérés en {elapsed_time:.3f}s")
-
-                # Afficher un extrait du premier document
-                first_doc = documents[0]
-                preview = first_doc.page_content[:150].replace("\n", " ")
-                print_info(f"Premier document (extrait): {preview}...")
-
-                # Afficher les métadonnées si disponibles
-                if hasattr(first_doc, "metadata") and first_doc.metadata:
-                    print_info(f"Métadonnées: {list(first_doc.metadata.keys())}")
-            else:
-                print_warning("⚠️ Aucun document récupéré")
-
-        return True
-
-    except Exception as e:
-        print_error(f"Erreur lors de la récupération: {str(e)}")
-        import traceback
-
-        traceback.print_exc()
-        return False
+    embedder = OpenAIEmbedder("k", "text-embedding-3-small", 4, httpx.MockTransport(handler))
+    vectors = embedder.embed_documents([f"t{i}" for i in range(100)])
+    assert len(calls) == 2 and len(calls[0]["input"]) == 96
+    assert [v[0] for v in vectors] == [float(i) for i in range(96)] + [float(i) for i in range(4)]
 
 
-def test_vector_only_retriever():
-    """Test 3: Comparaison avec retriever vectoriel seul."""
-    print_header("TEST 3: Comparaison Vector vs Hybrid")
+def test_cohere_embedder_uses_input_types():
+    seen = []
 
-    try:
-        print_test("Création du retriever vectoriel seul...")
-        vector_retriever = get_retriever(k=3, use_hybrid=False)
-        print_success("Retriever vectoriel créé")
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
 
-        print_test("Création du retriever hybrid...")
-        hybrid_retriever = get_retriever(k=3, use_hybrid=True)
-        print_success("Retriever hybrid créé")
+        body = json.loads(request.read())
+        seen.append(body["input_type"])
+        return httpx.Response(200, json={"embeddings": {"float": [[0.1] * 4] * len(body["texts"])}})
 
-        test_query = "What is prompt engineering?"
-        print_test(f"Test avec la requête: {test_query}")
-
-        # Test vectoriel
-        print_info("Récupération avec retriever vectoriel...")
-        start_time = time.time()
-        vector_docs = vector_retriever.get_relevant_documents(test_query)
-        vector_time = time.time() - start_time
-
-        # Test hybrid
-        print_info("Récupération avec retriever hybrid...")
-        start_time = time.time()
-        hybrid_docs = hybrid_retriever.get_relevant_documents(test_query)
-        hybrid_time = time.time() - start_time
-
-        print_info(f"Vector seul: {len(vector_docs)} documents en {vector_time:.3f}s")
-        print_info(f"Hybrid: {len(hybrid_docs)} documents en {hybrid_time:.3f}s")
-
-        # Vérifier si les résultats diffèrent
-        if len(vector_docs) != len(hybrid_docs):
-            print_info("Les deux retrievers retournent un nombre différent de documents")
-
-        return True
-
-    except Exception as e:
-        print_error(f"Erreur lors de la comparaison: {str(e)}")
-        import traceback
-
-        traceback.print_exc()
-        return False
+    embedder = CohereEmbedder("k", "embed-v4.0", 4, httpx.MockTransport(handler))
+    embedder.embed_documents(["a", "b"])
+    embedder.embed_query("q")
+    assert seen == ["search_document", "search_query"]
 
 
-def main():
-    """Fonction principale de test."""
-    print_header("TESTS HYBRID SEARCH (Vector + BM25)")
-    print_info("Ce script teste l'implémentation du Hybrid Search")
-    print_info("Assurez-vous que ChromaDB existe déjà ou patientez pendant sa création...")
+def test_cohere_reranker_sorts_by_score():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "results": [
+                    {"index": 2, "relevance_score": 0.2},
+                    {"index": 0, "relevance_score": 0.9},
+                ]
+            },
+        )
 
-    results = []
-
-    # Test 1: Création du retriever
-    retriever, success = test_retriever_creation()
-    results.append(("Création du retriever", success))
-
-    if success and retriever:
-        # Test 2: Récupération de documents
-        retrieval_success = test_retriever_retrieval(retriever)
-        results.append(("Récupération de documents", retrieval_success))
-
-        # Test 3: Comparaison
-        comparison_success = test_vector_only_retriever()
-        results.append(("Comparaison Vector vs Hybrid", comparison_success))
-
-    # Résumé
-    print_header("RÉSUMÉ DES TESTS")
-    for test_name, success in results:
-        status = "✅ RÉUSSI" if success else "❌ ÉCHOUÉ"
-        print(f"{status}: {test_name}")
-
-    total = len(results)
-    passed = sum(1 for _, success in results if success)
-    print_info(f"\nTotal: {passed}/{total} tests réussis")
-
-    if passed == total:
-        print_success("Tous les tests sont passés ! 🎉")
-    else:
-        print_warning(f"{total - passed} test(s) ont échoué")
+    reranker = CohereReranker("k", transport=httpx.MockTransport(handler))
+    assert reranker.rerank("q", ["a", "b", "c"], 2) == [(0, 0.9), (2, 0.2)]
 
 
-if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print_warning("\n⚠️ Tests interrompus par l'utilisateur")
-    except Exception as e:
-        print_error(f"Erreur fatale: {str(e)}")
-        import traceback
+def test_post_retries_on_rate_limit(monkeypatch):
+    monkeypatch.setattr("src.rag.embeddings.time.sleep", lambda _s: None)
+    attempts = []
 
-        traceback.print_exc()
+    def handler(request: httpx.Request) -> httpx.Response:
+        attempts.append(1)
+        if len(attempts) < 3:
+            return httpx.Response(429)
+        return httpx.Response(200, json={"embeddings": {"float": [[0.0] * 4]}})
+
+    embedder = CohereEmbedder("k", "m", 4, httpx.MockTransport(handler))
+    assert embedder.embed_query("x") == [0.0] * 4
+    assert len(attempts) == 3
+
+
+# ---------- recherche hybride sur PostgreSQL + pgvector ----------
+
+pytestmark_pg = pytest.mark.skipif(
+    not get_settings().database_url.startswith("postgresql"),
+    reason="nécessite PostgreSQL + pgvector (DATABASE_URL)",
+)
+
+
+class HashEmbedder:
+    """Embedding déterministe par sac de mots hachés : similaire si les mots se recoupent."""
+
+    dim = get_settings().EMBEDDING_DIM
+
+    def _vec(self, text: str) -> list[float]:
+        vec = [0.0] * self.dim
+        for word in re.findall(r"[a-z0-9]+", text.lower()):
+            vec[int(hashlib.md5(word.encode()).hexdigest(), 16) % self.dim] += 1.0
+        norm = math.sqrt(sum(x * x for x in vec)) or 1.0
+        return [x / norm for x in vec]
+
+    def embed_documents(self, texts):
+        return [self._vec(t) for t in texts]
+
+    def embed_query(self, text):
+        return self._vec(text)
+
+
+CORPUS = {
+    ("3M_2018_10K.pdf", "3M", 2018): [
+        (
+            "Item 7 > Liquidity",
+            "Purchases of property, plant and equipment were 1,577 million in 2018.",
+            60,
+        ),
+        (
+            "Item 1A > Risk Factors",
+            "Tariffs and trade restrictions could affect our supply chain.",
+            12,
+        ),
+    ],
+    ("ADOBE_2022_10K.pdf", "ADOBE", 2022): [
+        ("Item 7 > Liquidity", "Net cash provided by operating activities was 7,838 million.", 55),
+        ("Item 1 > Business", "Adobe Creative Cloud subscriptions drive digital media revenue.", 4),
+    ],
+    ("3M_2019_10K.pdf", "3M", 2019): [
+        (
+            "Item 7 > Liquidity",
+            "Purchases of property, plant and equipment were 1,750 million in 2019.",
+            58,
+        ),
+    ],
+}
+
+
+@pytest.fixture(scope="module")
+def corpus():
+    if not get_settings().database_url.startswith("postgresql"):
+        pytest.skip("nécessite PostgreSQL + pgvector")
+    run_migrations()
+    embedder = HashEmbedder()
+    with session_scope() as db:
+        db.query(Chunk).delete()
+        db.query(Document).delete()
+        for (filename, company, year), chunks in CORPUS.items():
+            doc = Document(
+                filename=filename,
+                company=company,
+                fiscal_year=year,
+                doc_type="10-K",
+                status="ready",
+            )
+            db.add(doc)
+            db.flush()
+            texts = [f"[{company} {year} 10-K — {sec}]\n{text}" for sec, text, _ in chunks]
+            vectors = embedder.embed_documents(texts)
+            add_chunks(
+                db,
+                doc.id,
+                [
+                    {
+                        "ordinal": i,
+                        "content": text,
+                        "embedding_text": texts[i],
+                        "section": sec,
+                        "kind": "text",
+                        "page_start": page,
+                        "page_end": page,
+                        "company": company,
+                        "fiscal_year": year,
+                        "doc_type": "10-K",
+                        "embedding": vectors[i],
+                    }
+                    for i, (sec, text, page) in enumerate(chunks)
+                ],
+            )
+    return embedder
+
+
+def _search(corpus, text, **kw):
+    return hybrid_search(text, corpus.embed_query(text), k=5, candidates=10, **kw)
+
+
+@pytest.mark.skipif(
+    not get_settings().database_url.startswith("postgresql"), reason="PostgreSQL requis"
+)
+class TestPostgres:
+    def test_finds_exact_figure_and_returns_provenance(self, corpus):
+        hits = _search(corpus, "purchases of property plant and equipment 3M 2018")
+        top = hits[0]
+        assert top.filename == "3M_2018_10K.pdf" and top.page_start == 60
+        assert top.company == "3M" and top.fiscal_year == 2018 and top.doc_type == "10-K"
+        assert top.fusion_score > 0
+
+    def test_lexical_branch_finds_rare_term_missed_by_dense(self, corpus):
+        hits = _search(corpus, "tariffs")
+        assert hits and hits[0].section == "Item 1A > Risk Factors"
+
+    def test_filters_restrict_results(self, corpus):
+        hits = _search(
+            corpus,
+            "purchases of property plant and equipment",
+            filters=Filters(company="3m", fiscal_year=2019),
+        )
+        assert hits and {h.fiscal_year for h in hits} == {2019}
+        assert _search(corpus, "revenue", filters=Filters(company="UNKNOWN")) == []
+
+    def test_search_documents_with_reranker_and_confidence(self, corpus):
+        class Fixed:
+            def rerank(self, query, texts, top_n):
+                return [(0, 0.95)]
+
+        result = search_documents(
+            "net cash operating activities adobe", embedder=corpus, reranker=Fixed(), top_k=1
+        )
+        assert len(result.documents) == 1 and result.best_score == 0.95 and result.is_confident
+
+        class Weak:
+            def rerank(self, query, texts, top_n):
+                return [(0, 0.01)]
+
+        weak = search_documents("net cash", embedder=corpus, reranker=Weak(), top_k=1)
+        assert weak.best_score == 0.01 and not weak.is_confident
+
+    def test_without_reranker_signal_results_are_confident_if_any(self, corpus):
+        result = search_documents("liquidity", embedder=corpus, reranker=NoReranker(), top_k=2)
+        assert len(result.documents) == 2 and result.best_score is None and result.is_confident
+        assert not SearchResult([], None).is_confident
+
+
+def test_postgres_required_error_on_other_backends():
+    if get_engine().dialect.name == "postgresql":
+        pytest.skip("test spécifique à SQLite")
+    with pytest.raises(RuntimeError, match="PostgreSQL"):
+        hybrid_search("x", [0.0] * get_settings().EMBEDDING_DIM)

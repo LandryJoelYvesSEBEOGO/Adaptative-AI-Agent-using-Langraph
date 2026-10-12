@@ -52,6 +52,17 @@ class Settings(BaseSettings):
     RAG_DB_PATH: str = str(DATA_DIR / "rag.db")  # utilisé uniquement si DATABASE_URL est vide
     AUTO_MIGRATE: bool = True  # applique `alembic upgrade head` au démarrage de l'API
 
+    # --- Embeddings et reranking : fournisseurs hébergés ou modèles locaux ---
+    OPENAI_API_KEY: str | None = None
+    COHERE_API_KEY: str | None = None
+    EMBEDDING_PROVIDER: Literal["nomic-local", "openai", "cohere"] = "nomic-local"
+    EMBEDDING_MODEL: str = ""  # vide : modèle par défaut du fournisseur
+    EMBEDDING_DIM: int = 768  # dimension de la colonne pgvector (changer = nouvelle migration)
+    RERANKER_PROVIDER: Literal["none", "local", "cohere"] = "local"
+    RERANK_MIN_SCORE: float = 0.1  # sous ce score (0-1), la recherche web prend le relais
+    SEARCH_CANDIDATES: int = 40  # candidats par branche (dense / lexicale) avant fusion RRF
+    RRF_K: int = 60  # constante de la fusion par rangs réciproques
+
     # --- Modèles ---
     GROQ_model: str = "openai/gpt-oss-120b"
     NomicEmbeddings_model: str = "nomic-embed-text-v1.5"
@@ -146,7 +157,14 @@ class Settings(BaseSettings):
     CONVERSATION_CONTEXT_TURNS: int = 6  # Nombre de tours (user+assistant) à injecter
     CONVERSATION_CONTEXT_MAX_CHARS: int = 2000  # Taille max du contexte conversationnel
 
-    @field_validator("GROQ_API_KEY", "TAVILY_API_KEY", "LANGSMITH_API_KEY", mode="before")
+    @field_validator(
+        "GROQ_API_KEY",
+        "TAVILY_API_KEY",
+        "LANGSMITH_API_KEY",
+        "OPENAI_API_KEY",
+        "COHERE_API_KEY",
+        mode="before",
+    )
     @classmethod
     def _empty_to_none(cls, value):
         return value or None

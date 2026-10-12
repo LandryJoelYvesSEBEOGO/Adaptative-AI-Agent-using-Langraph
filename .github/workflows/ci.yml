@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: rag
           POSTGRES_PASSWORD: rag
@@ -60,7 +60,7 @@ jobs:
           cache-dependency-glob: Backend/uv.lock
       - run: uv sync --frozen
       - name: Tests de base de données sur PostgreSQL
-        run: uv run pytest -q tests/test_database.py tests/test_security.py
+        run: uv run pytest -q tests/test_database.py tests/test_security.py tests/test_hybrid_search.py
 
   frontend:
     runs-on: ubuntu-latest
