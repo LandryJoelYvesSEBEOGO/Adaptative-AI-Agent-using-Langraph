@@ -1,6 +1,7 @@
 import { ApiError } from "./errors";
-import { api, unwrap, unwrapVoid } from "./client";
-import type { FeedbackType, User } from "./types";
+import { api, apiUrl, fetchWithRefresh, unwrap, unwrapVoid } from "./client";
+import { toApiError } from "./errors";
+import type { DocumentInfo, FeedbackType, User, UserRole } from "./types";
 
 // ---- Authentification -----------------------------------------------------------------
 
@@ -73,4 +74,49 @@ export const getErrorDistribution = () => unwrap(api.GET("/api/v1/admin/metrics/
 
 export const getSystemStatus = () => unwrap(api.GET("/api/v1/admin/system/status"));
 
-export { unwrapVoid };
+// ---- Documents --------------------------------------------------------------------------
+
+export const listDocuments = () => unwrap(api.GET("/api/v1/documents"));
+
+export interface UploadMetadata {
+  company?: string;
+  fiscalYear?: number;
+  docType?: string;
+}
+
+/** Téléverse un PDF (multipart) ; l'indexation se poursuit côté serveur (voir le statut). */
+export async function uploadDocument(file: File, metadata: UploadMetadata = {}): Promise<DocumentInfo> {
+  const form = new FormData();
+  form.append("file", file);
+  if (metadata.company) form.append("company", metadata.company);
+  if (metadata.fiscalYear) form.append("fiscal_year", String(metadata.fiscalYear));
+  if (metadata.docType) form.append("doc_type", metadata.docType);
+
+  const response = await fetchWithRefresh(
+    new Request(apiUrl("/api/v1/documents"), { method: "POST", body: form, credentials: "include" }),
+  );
+  const body: unknown = await response.json().catch(() => undefined);
+  if (!response.ok) throw toApiError(response, body);
+  return body as DocumentInfo;
+}
+
+export const reindexDocument = (id: string) =>
+  unwrap(api.POST("/api/v1/documents/{document_id}/reindex", { params: { path: { document_id: id } } }));
+
+export const deleteDocument = (id: string) =>
+  unwrapVoid(api.DELETE("/api/v1/documents/{document_id}", { params: { path: { document_id: id } } }));
+
+// ---- Utilisateurs (administration) ------------------------------------------------------
+
+export const listUsers = () => unwrap(api.GET("/api/v1/admin/users"));
+
+export const updateUserRole = (id: string, role: UserRole) =>
+  unwrap(
+    api.PATCH("/api/v1/admin/users/{user_id}", {
+      params: { path: { user_id: id } },
+      body: { role },
+    }),
+  );
+
+export const deleteUser = (id: string) =>
+  unwrapVoid(api.DELETE("/api/v1/admin/users/{user_id}", { params: { path: { user_id: id } } }));

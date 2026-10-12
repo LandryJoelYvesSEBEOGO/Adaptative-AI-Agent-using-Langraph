@@ -3,9 +3,8 @@ import {
   LayoutDashboard,
   Activity,
   Server,
-  MessageSquare,
+  FileText,
   Users,
-  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -24,9 +23,8 @@ const navItems = [
   { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/admin/metrics", icon: Activity, label: "Métriques" },
   { to: "/admin/api-requests", icon: Server, label: "Requêtes API" },
-  { to: "/admin/answer-quality", icon: MessageSquare, label: "Qualité" },
+  { to: "/admin/documents", icon: FileText, label: "Documents" },
   { to: "/admin/users", icon: Users, label: "Utilisateurs" },
-  { to: "/admin/settings", icon: Settings, label: "Paramètres" },
 ];
 
 const AdminSidebar = ({ collapsed, onToggle }: AdminSidebarProps) => {

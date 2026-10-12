@@ -970,19 +970,44 @@
       },
       "SystemStatus": {
         "properties": {
+          "availability_24h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Availability 24H"
+          },
+          "documents_ready": {
+            "default": 0,
+            "title": "Documents Ready",
+            "type": "integer"
+          },
           "llm_status": {
+            "enum": [
+              "Operational",
+              "Degraded",
+              "Down"
+            ],
             "title": "Llm Status",
             "type": "string"
           },
           "rag_pipeline": {
+            "enum": [
+              "Active",
+              "Inactive"
+            ],
             "title": "Rag Pipeline",
             "type": "string"
           },
-          "uptime_percentage": {
-            "title": "Uptime Percentage",
-            "type": "number"
-          },
           "vector_db": {
+            "enum": [
+              "Connected",
+              "Disconnected"
+            ],
             "title": "Vector Db",
             "type": "string"
           }
@@ -990,8 +1015,7 @@
         "required": [
           "rag_pipeline",
           "vector_db",
-          "llm_status",
-          "uptime_percentage"
+          "llm_status"
         ],
         "title": "SystemStatus",
         "type": "object"

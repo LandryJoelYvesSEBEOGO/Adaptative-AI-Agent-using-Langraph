@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import * as endpoints from "./endpoints";
-import type { FeedbackType, Message } from "./types";
+import type { DocumentInfo, FeedbackType, Message, UserRole } from "./types";
 
 export const queryKeys = {
   conversations: ["conversations"] as const,
   messages: (conversationId: string) => ["messages", conversationId] as const,
+  documents: ["documents"] as const,
+  users: ["admin", "users"] as const,
   admin: {
     overview: ["admin", "overview"] as const,
     requestsChart: (days: number) => ["admin", "requests-chart", days] as const,
@@ -101,3 +103,60 @@ export const useSystemStatus = () =>
     queryFn: endpoints.getSystemStatus,
     refetchInterval: REFRESH_MS,
   });
+
+// ---- Documents --------------------------------------------------------------------------
+
+const IN_PROGRESS = new Set<DocumentInfo["status"]>(["pending", "processing"]);
+
+/** Liste des documents ; relue toutes les 2 s tant qu'une indexation est en cours. */
+export const useDocuments = () =>
+  useQuery({
+    queryKey: queryKeys.documents,
+    queryFn: endpoints.listDocuments,
+    refetchInterval: (query) => (query.state.data?.some((d) => IN_PROGRESS.has(d.status)) ? 2000 : false),
+  });
+
+export function useUploadDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, metadata }: { file: File; metadata?: endpoints.UploadMetadata }) =>
+      endpoints.uploadDocument(file, metadata),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.documents }),
+  });
+}
+
+export function useReindexDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: endpoints.reindexDocument,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.documents }),
+  });
+}
+
+export function useDeleteDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: endpoints.deleteDocument,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.documents }),
+  });
+}
+
+// ---- Utilisateurs -----------------------------------------------------------------------
+
+export const useUsers = () => useQuery({ queryKey: queryKeys.users, queryFn: endpoints.listUsers });
+
+export function useUpdateUserRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, role }: { id: string; role: UserRole }) => endpoints.updateUserRole(id, role),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.users }),
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: endpoints.deleteUser,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.users }),
+  });
+}

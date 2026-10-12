@@ -884,14 +884,28 @@ export interface components {
         };
         /** SystemStatus */
         SystemStatus: {
-            /** Llm Status */
-            llm_status: string;
-            /** Rag Pipeline */
-            rag_pipeline: string;
-            /** Uptime Percentage */
-            uptime_percentage: number;
-            /** Vector Db */
-            vector_db: string;
+            /** Availability 24H */
+            availability_24h?: number | null;
+            /**
+             * Documents Ready
+             * @default 0
+             */
+            documents_ready: number;
+            /**
+             * Llm Status
+             * @enum {string}
+             */
+            llm_status: "Operational" | "Degraded" | "Down";
+            /**
+             * Rag Pipeline
+             * @enum {string}
+             */
+            rag_pipeline: "Active" | "Inactive";
+            /**
+             * Vector Db
+             * @enum {string}
+             */
+            vector_db: "Connected" | "Disconnected";
         };
         /** UserResponse */
         UserResponse: {

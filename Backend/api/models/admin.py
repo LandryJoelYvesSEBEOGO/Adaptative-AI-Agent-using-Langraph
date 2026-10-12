@@ -62,10 +62,11 @@ class LatencyTrendPoint(BaseModel):
 
 
 class SystemStatus(BaseModel):
-    rag_pipeline: str  # "Active" | "Inactive"
-    vector_db: str  # "Connected" | "Disconnected"
-    llm_status: str  # "Operational" | "Degraded" | "Down"
-    uptime_percentage: float
+    rag_pipeline: Literal["Active", "Inactive"]  # Active : au moins un document indexé
+    vector_db: Literal["Connected", "Disconnected"]  # PostgreSQL + pgvector joignable
+    llm_status: Literal["Operational", "Degraded", "Down"]  # clé configurée, taux d'erreur 24 h
+    availability_24h: Optional[float] = None  # % de requêtes réussies sur 24 h ; None sans trafic
+    documents_ready: int = 0
 
 
 class AdminUser(BaseModel):

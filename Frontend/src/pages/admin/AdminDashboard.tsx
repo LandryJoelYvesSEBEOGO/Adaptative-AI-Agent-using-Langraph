@@ -19,6 +19,7 @@ import {
   useSystemStatus,
 } from "@/api/hooks";
 import QueryError from "@/components/QueryError";
+import { cn } from "@/lib/utils";
 
 const AdminDashboard = () => {
   const overviewQuery = useMetricsOverview();
@@ -45,6 +46,21 @@ const AdminDashboard = () => {
         { name: "Autres", value: errorDistribution.other, color: "hsl(var(--muted-foreground))" },
       ]
     : [];
+
+  const healthy = systemStatus
+    ? systemStatus.rag_pipeline === "Active" &&
+      systemStatus.vector_db === "Connected" &&
+      systemStatus.llm_status === "Operational"
+    : null;
+  const overall =
+    healthy === null
+      ? { dot: "bg-muted-foreground", label: "Vérification…" }
+      : healthy
+        ? { dot: "bg-success", label: "Opérationnel" }
+        : systemStatus?.llm_status === "Down" || systemStatus?.vector_db === "Disconnected"
+          ? { dot: "bg-destructive", label: "Incident" }
+          : { dot: "bg-warning", label: "Dégradé" };
+  const tone = (ok: boolean) => (systemStatus ? (ok ? "text-success" : "text-destructive") : "text-muted-foreground");
 
   const successRate = overview ? `${overview.success_rate.toFixed(1)}%` : "--";
   const averageLatency = overview ? `${overview.average_latency.toFixed(2)}s` : "--";
@@ -163,14 +179,7 @@ const AdminDashboard = () => {
 
       {/* System Status with template-inspired design */}
       <Card className="relative overflow-hidden bg-linear-to-br from-foreground to-foreground/95 text-background border-0 shadow-xl">
-        <div className="absolute inset-0 opacity-10">
-          <div 
-            className="absolute inset-0"
-            style={{
-              backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')",
-            }}
-          />
-        </div>
+        <div className="absolute inset-0 noise-overlay" />
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
         <CardContent className="p-6 relative z-10">
           <div className="flex items-center justify-between mb-6">
@@ -180,24 +189,35 @@ const AdminDashboard = () => {
               </span>
               <h3 className="text-xl font-oswald font-medium">Statut en temps réel</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
-              <span className="text-sm font-medium">Opérationnel</span>
+            <div className="flex items-center gap-2" role="status">
+              <span className={cn("w-2 h-2 rounded-full animate-pulse", overall.dot)} />
+              <span className="text-sm font-medium">{overall.label}</span>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-sm">
             <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-xs border border-background/20">
               <span className="text-muted-foreground">&gt; RAG Pipeline</span>
-              <span className="text-success font-semibold">{systemStatus?.rag_pipeline || "—"}</span>
+              <span className={cn("font-semibold", tone(systemStatus?.rag_pipeline === "Active"))}>
+                {systemStatus ? `${systemStatus.rag_pipeline} · ${systemStatus.documents_ready} doc.` : "—"}
+              </span>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-xs border border-background/20">
               <span className="text-muted-foreground">&gt; Vector DB</span>
-              <span className="text-success font-semibold">{systemStatus?.vector_db || "—"}</span>
+              <span className={cn("font-semibold", tone(systemStatus?.vector_db === "Connected"))}>
+                {systemStatus?.vector_db ?? "—"}
+              </span>
             </div>
             <div className="flex justify-between items-center p-3 rounded-lg bg-background/10 backdrop-blur-xs border border-background/20">
-              <span className="text-muted-foreground">&gt; LLM Status</span>
-              <span className="text-success font-semibold">
-                {systemStatus ? `${systemStatus.uptime_percentage}% Uptime` : "—"}
+              <span className="text-muted-foreground">&gt; LLM</span>
+              <span
+                className={cn(
+                  "font-semibold",
+                  systemStatus?.llm_status === "Degraded" ? "text-warning" : tone(systemStatus?.llm_status === "Operational"),
+                )}
+              >
+                {systemStatus
+                  ? `${systemStatus.llm_status}${systemStatus.availability_24h != null ? ` · ${systemStatus.availability_24h}% (24 h)` : ""}`
+                  : "—"}
               </span>
             </div>
           </div>

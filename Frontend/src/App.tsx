@@ -19,9 +19,8 @@ import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMetrics from "./pages/admin/AdminMetrics";
 import AdminApiRequests from "./pages/admin/AdminApiRequests";
-import AdminAnswerQuality from "./pages/admin/AdminAnswerQuality";
+import AdminDocuments from "./pages/admin/AdminDocuments";
 import AdminUsers from "./pages/admin/AdminUsers";
-import AdminSettings from "./pages/admin/AdminSettings";
 
 // Protected Route Component
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -79,9 +78,8 @@ const App = () => (
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="metrics" element={<AdminMetrics />} />
               <Route path="api-requests" element={<AdminApiRequests />} />
-              <Route path="answer-quality" element={<AdminAnswerQuality />} />
+              <Route path="documents" element={<AdminDocuments />} />
               <Route path="users" element={<AdminUsers />} />
-              <Route path="settings" element={<AdminSettings />} />
             </Route>
 
             {/* Catch all */}

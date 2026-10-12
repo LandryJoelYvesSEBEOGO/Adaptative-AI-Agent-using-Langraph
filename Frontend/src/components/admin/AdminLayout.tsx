@@ -9,15 +9,7 @@ const AdminLayout = () => {
 
   return (
     <div className="min-h-screen bg-background relative">
-      {/* Background effects inspired by template */}
-      <div className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-20">
-        <div 
-          className="absolute inset-0 mix-blend-overlay"
-          style={{
-            backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')",
-          }}
-        />
-      </div>
+      <div className="absolute inset-0 pointer-events-none noise-overlay" />
       <div className="absolute top-0 right-0 w-[50rem] h-[50rem] bg-linear-to-b from-primary/10 to-transparent opacity-50 dark:opacity-30 blur-3xl pointer-events-none rounded-full translate-x-1/3 -translate-y-1/3" />
       
       <AdminSidebar

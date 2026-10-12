@@ -1,10 +1,11 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Dict, List, Optional
 
 from sqlalchemy import case, func, select
 
 from api.database import session_scope
-from api.db_models import RagRequest, User
+from api.db_models import Document, RagRequest, User
+from config.settings import get_settings
 
 
 def _percentile(values: List[float], pct: float) -> float:
@@ -239,10 +240,36 @@ def get_latency_trend(days: int = 7) -> List[Dict]:
     ]
 
 
+DEGRADED_ERROR_RATE = 0.2
+MIN_REQUESTS_FOR_DEGRADED = 5
+
+
 def get_system_status() -> Dict:
+    """État réel du système : base, documents indexés, clé LLM et taux de réussite sur 24 h."""
+    since = datetime.now(UTC) - timedelta(hours=24)
+    with session_scope() as db:
+        documents_ready = (
+            db.scalar(select(func.count(Document.id)).where(Document.status == "ready")) or 0
+        )
+        total, errors = db.execute(
+            select(
+                func.count(RagRequest.id),
+                func.coalesce(func.sum(case((RagRequest.status == "error", 1), else_=0)), 0),
+            ).where(RagRequest.created_at >= since)
+        ).one()
+        vector_db = "Connected" if db.get_bind().dialect.name == "postgresql" else "Disconnected"
+
+    if not get_settings().GROQ_API_KEYS:
+        llm_status = "Down"
+    elif total >= MIN_REQUESTS_FOR_DEGRADED and errors / total > DEGRADED_ERROR_RATE:
+        llm_status = "Degraded"
+    else:
+        llm_status = "Operational"
+
     return {
-        "rag_pipeline": "Active",
-        "vector_db": "Connected",
-        "llm_status": "Operational",
-        "uptime_percentage": 98.5,
+        "rag_pipeline": "Active" if documents_ready > 0 else "Inactive",
+        "vector_db": vector_db,
+        "llm_status": llm_status,
+        "availability_24h": round(100 * (total - errors) / total, 1) if total else None,
+        "documents_ready": documents_ready,
     }
