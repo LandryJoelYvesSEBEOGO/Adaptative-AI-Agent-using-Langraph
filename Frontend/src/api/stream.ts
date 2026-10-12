@@ -1,4 +1,4 @@
-import { API_ORIGIN, fetchWithRefresh } from "./client";
+import { apiUrl, fetchWithRefresh } from "./client";
 import { ApiError, messageFromBody, toApiError } from "./errors";
 import type { Citation, StreamEvent } from "./types";
 
@@ -52,7 +52,7 @@ export async function* streamChat(
   signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
   const response = await fetchWithRefresh(
-    new Request(`${API_ORIGIN}/api/v1/chat/query/stream`, {
+    new Request(apiUrl("/api/v1/chat/query/stream"), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json", Accept: "text/event-stream" },

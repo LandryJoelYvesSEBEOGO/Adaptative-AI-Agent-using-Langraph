@@ -41,7 +41,7 @@ const Chat = () => {
   const conversations = useConversations();
   const messagesQuery = useMessages(conversationId);
   const feedback = useFeedback(conversationId);
-  const { pending, isStreaming, send, regenerate, stop, dismissError } = useChat({
+  const { pending, busy, isStreaming, send, regenerate, stop, dismissError } = useChat({
     conversationId,
     onConversationStart: setConversationId,
   });
@@ -60,11 +60,11 @@ const Chat = () => {
   const submit = useCallback(
     (question: string) => {
       const trimmed = question.trim();
-      if (!trimmed || isStreaming) return;
+      if (!trimmed || busy) return;
       setInput("");
       void send(trimmed);
     },
-    [isStreaming, send],
+    [busy, send],
   );
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -92,7 +92,7 @@ const Chat = () => {
   };
 
   const handleNewChat = () => {
-    if (isStreaming) return;
+    if (busy) return;
     setConversationId(undefined);
     setSidebarOpen(false);
     textareaRef.current?.focus();
@@ -118,7 +118,7 @@ const Chat = () => {
         onClose={() => setSidebarOpen(false)}
         onNewChat={handleNewChat}
         onSelect={(id) => {
-          if (isStreaming) return;
+          if (busy) return;
           setConversationId(id);
           setSidebarOpen(false);
         }}
@@ -227,7 +227,8 @@ const Chat = () => {
                     role="assistant"
                     content={pending.text}
                     citations={pending.citations}
-                    streaming
+                    streaming={!pending.stopped}
+                    stopped={pending.stopped}
                   />
                 ) : (
                   <div className="flex gap-4" role="status" aria-label="L'assistant réfléchit">
@@ -273,7 +274,7 @@ const Chat = () => {
               ) : (
                 <Button
                   onClick={() => submit(input)}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || busy}
                   size="icon"
                   aria-label="Envoyer"
                   className="absolute right-2 bottom-2 shadow-lg hover:shadow-xl transition-shadow"

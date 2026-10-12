@@ -9,7 +9,10 @@ export const API_ORIGIN: string = import.meta.env.VITE_API_URL ?? "";
 /** Événement émis quand la session ne peut plus être renouvelée. */
 export const AUTH_EXPIRED_EVENT = "auth:expired";
 
-const REFRESH_URL = `${API_ORIGIN}/api/v1/auth/refresh`;
+/** URL absolue d'une route de l'API (relative à la page quand l'origine est vide). */
+export const apiUrl = (path: string): string => new URL(`${API_ORIGIN}${path}`, window.location.origin).toString();
+
+const REFRESH_PATH = "/api/v1/auth/refresh";
 const AUTH_PATHS = ["/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/refresh"];
 // Sondage de session au chargement : un échec de renouvellement n'est pas une « expiration »
 const QUIET_PATHS = ["/api/v1/auth/me"];
@@ -18,7 +21,7 @@ let refreshing: Promise<boolean> | null = null;
 
 /** Renouvelle la session (une seule requête à la fois, partagée par les appels concurrents). */
 function refreshSession(): Promise<boolean> {
-  refreshing ??= fetch(REFRESH_URL, { method: "POST", credentials: "include" })
+  refreshing ??= fetch(apiUrl(REFRESH_PATH), { method: "POST", credentials: "include" })
     .then((response) => response.ok)
     .catch(() => false)
     .finally(() => {

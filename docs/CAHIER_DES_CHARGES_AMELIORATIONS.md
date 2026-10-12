@@ -174,7 +174,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L4.3** TanStack Query pour tout l'état serveur. *Session, conversations, messages, avis (mise à jour optimiste) et pages d'administration ; le flux de génération reste un état local par nature.*
 - [x] **L4.4** Rendu Markdown sécurisé des réponses (tableaux, code). *`react-markdown` + `remark-gfm` + `rehype-sanitize` ; scripts, `onerror` et liens `javascript:` neutralisés (testés) ; renvois `[n]` rendus en badges.*
 - [x] **L4.5** Citations au survol + panneau des sources avec aperçu de la page PDF. *Vérifié en navigateur sur un vrai PDF servi par l'API (pdf.js « legacy », worker local) ; aucune capture sur un vrai 10-K.*
-- [ ] **L4.6** Boutons Stop (annulation côté serveur), Régénérer, Copier ; feedback persisté.
+- [x] **L4.6** Boutons Stop (annulation côté serveur), Régénérer, Copier ; feedback persisté. *Vérifié en navigateur : arrêt (réponse partielle conservée et marquée), régénération sans doublon, avis conservé après rechargement.*
 - [ ] **L4.7** Pages admin réelles (Documents, Utilisateurs) ; suppression ou masquage des pages factices.
 - [ ] **L4.8** Suppression des reliquats Lovable et des composants shadcn inutilisés ; auth par cookie httpOnly.
 
