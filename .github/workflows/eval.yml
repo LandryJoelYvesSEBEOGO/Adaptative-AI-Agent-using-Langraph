@@ -1,0 +1,97 @@
+name: Évaluation RAG (FinanceBench)
+
+# Lancement manuel : consomme des tokens Groq et des appels Cohere.
+# Secrets requis : GROQ_API_KEY, COHERE_API_KEY.
+# Si Backend/evaluation/baseline.json existe, le job échoue en cas de régression.
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Nombre de questions (sous-ensemble reproductible)"
+        default: "20"
+      parser:
+        description: "Parseur PDF (pypdf rapide, docling tableaux conservés)"
+        default: "pypdf"
+        type: choice
+        options: [pypdf, docling]
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: rag
+          POSTGRES_PASSWORD: rag
+          POSTGRES_DB: rag
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rag" --health-interval 5s
+          --health-timeout 3s --health-retries 10
+    defaults:
+      run:
+        working-directory: Backend
+    env:
+      JWT_SECRET_KEY: eval-secret-key-0123456789-0123456789-0123456789
+      DATABASE_URL: postgresql+psycopg://rag:rag@localhost:5432/rag
+      ADMIN_EMAIL: eval@example.com
+      ADMIN_PASSWORD: eval-password-123
+      EVAL_PASSWORD: eval-password-123
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+      EMBEDDING_PROVIDER: cohere
+      EMBEDDING_DIM: "1024"
+      RERANKER_PROVIDER: cohere
+      INGEST_PARSER: ${{ inputs.parser }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - name: Dépendances (extra ingest si Docling)
+        run: |
+          if [ "${{ inputs.parser }}" = "docling" ]; then uv sync --frozen --extra ingest; else uv sync --frozen; fi
+
+      - name: Jeu de référence et PDF (dépôt public Patronus AI)
+        run: git clone --depth 1 https://github.com/patronus-ai/financebench /tmp/financebench
+
+      - name: Sous-ensemble (questions + PDF nécessaires)
+        run: >
+          uv run python -m evaluation.subset
+          --dataset /tmp/financebench/data/financebench_open_source.jsonl
+          --pdfs /tmp/financebench/pdfs
+          --limit ${{ inputs.limit }} --out-dir /tmp/eval
+
+      - name: Migrations et indexation
+        run: uv run python -m scripts.ingest_corpus /tmp/eval/pdfs
+
+      - name: Démarrer l'API
+        run: |
+          nohup uv run uvicorn api.main:app --port 8000 > /tmp/api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/health && break; sleep 2; done
+
+      - name: Évaluer
+        run: >
+          uv run python -m evaluation run
+          --dataset /tmp/eval/questions.jsonl --out /tmp/eval/report.json
+          --email "$ADMIN_EMAIL"
+
+      - name: Comparer à la référence
+        run: |
+          if [ -f evaluation/baseline.json ]; then
+            uv run python -m evaluation compare --baseline evaluation/baseline.json --candidate /tmp/eval/report.json
+          else
+            echo "Pas de evaluation/baseline.json : rapport publié sans comparaison."
+            cat /tmp/eval/report.json | python -c "import json,sys; print(json.dumps(json.load(sys.stdin)['summary'], indent=2))"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: |
+            /tmp/eval/report.json
+            /tmp/api.log

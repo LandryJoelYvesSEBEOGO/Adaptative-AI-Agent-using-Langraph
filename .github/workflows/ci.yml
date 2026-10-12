@@ -56,7 +56,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: Backend/uv.lock
       - run: uv sync --frozen
-      - name: Tests de base de données sur PostgreSQL
+      - name: Tests sur PostgreSQL (base, recherche hybride, ingestion, garde-fou de retrieval)
         run: uv run pytest -q
 
   frontend:

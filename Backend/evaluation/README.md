@@ -36,3 +36,13 @@ uv run python -m evaluation run --dataset financebench.jsonl --out results/basel
 ```
 
 Les rapports de `results/` ne sont pas versionnés (sorties locales).
+
+## Évaluation en CI (L3.8)
+
+- **À chaque PR** : `tests/test_retrieval_regression.py` (job PostgreSQL de `ci.yml`) ingère un
+  mini-corpus avec le vrai code de chunking / index / fusion et exige hit@3 ≥ 0,85 et MRR ≥ 0,7 ;
+  sans clé d'API ni modèle, déterministe.
+- **À la demande** : le workflow `Évaluation RAG (FinanceBench)` (`.github/workflows/eval.yml`,
+  « Run workflow ») clone le dépôt public FinanceBench, indexe les PDF d'un sous-ensemble de
+  questions, lance l'API, évalue (juge Groq) et compare à `Backend/evaluation/baseline.json` s'il
+  existe (à créer en y copiant le rapport de référence). Secrets : `GROQ_API_KEY`, `COHERE_API_KEY`.

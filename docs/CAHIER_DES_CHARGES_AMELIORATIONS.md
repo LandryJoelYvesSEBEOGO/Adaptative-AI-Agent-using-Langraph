@@ -156,7 +156,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L2.6** Supprimer le code dupliqué (`metrics_service.py`) et le système de métriques JSONL redondant.
 - [x] **L2.7** `docker compose` (api, postgres, frontend) + CI GitHub Actions (lint, typage, tests, build).
 
-### Lot 3 — Qualité du RAG *(1 à 2 semaines)*
+### Lot 3 — Qualité du RAG *(code livré ; mesures qualité à exécuter)*
 
 - [~] **L3.1** Établir une **mesure de référence** sur le jeu FinanceBench (exactitude, fidélité, latence, coût) avant toute modification. *Outillage livré (`Backend/evaluation/`) ; la mesure elle-même reste à exécuter avec vos clés et le corpus (voir `Backend/evaluation/README.md`). Le coût en tokens n'est pas mesuré.*
 - [x] **L3.2** Ingestion Docling avec conservation des tableaux, chunking par sections, métadonnées (société, année, type de document, page). *Parsing Docling non exécuté ici (modèles non téléchargeables) ; chunking, métadonnées et repli pypdf testés.*
@@ -165,7 +165,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L3.5** Vrai streaming token par token via le graphe (`astream` / `stream_mode="messages"`), un seul chemin d'exécution.
 - [x] **L3.6** Sorties structurées (Pydantic) pour toutes les étapes qui renvoient du JSON.
 - [x] **L3.7** Endpoint d'upload + ingestion asynchrone + statut par document *(si option B retenue)*. *Réalisé de façon neutre vis-à-vis de la décision produit : upload réservé aux administrateurs (corpus partagé), `owner_id` conservé pour l'option B ; CLI `scripts/ingest_corpus.py` pour l'option A. Tâche de fond FastAPI (`BackgroundTasks`), pas encore arq.*
-- [ ] **L3.8** Évaluation automatique en CI sur un sous-ensemble du jeu de référence.
+- [x] **L3.8** Évaluation automatique en CI sur un sous-ensemble du jeu de référence. *Garde-fou de retrieval à chaque PR (testé, y compris par mutation) ; workflow d'évaluation complète lancé à la demande (YAML validé, **jamais exécuté** : nécessite vos secrets).*
 
 ### Lot 4 — Frontend *(~1 semaine)*
 
