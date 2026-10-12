@@ -59,7 +59,6 @@ ignore = ["E501"]  # la longueur de ligne est laissée au formateur
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E402", "W291", "F841", "B905"]
 "api/services/chat_service.py" = ["E402"]  # supprimé au lot 2.4
-"api/services/metrics_service.py" = ["E402", "F811"]  # doublons supprimés au lot 2.6
 "api/main.py" = ["E402"]  # le patch bcrypt doit être importé en premier
 "api/services/auth_service.py" = ["E402", "F403"]
 
