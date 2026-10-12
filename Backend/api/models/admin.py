@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -61,12 +61,18 @@ class LatencyTrendPoint(BaseModel):
     generation: float
 
 
+class Alert(BaseModel):
+    kind: Literal["error_rate", "latency"]
+    message: str
+
+
 class SystemStatus(BaseModel):
     rag_pipeline: Literal["Active", "Inactive"]  # Active : au moins un document indexé
     vector_db: Literal["Connected", "Disconnected"]  # PostgreSQL + pgvector joignable
     llm_status: Literal["Operational", "Degraded", "Down"]  # clé configurée, taux d'erreur 24 h
     availability_24h: Optional[float] = None  # % de requêtes réussies sur 24 h ; None sans trafic
     documents_ready: int = 0
+    alerts: List[Alert] = []  # seuils dépassés sur la fenêtre récente
 
 
 class AdminUser(BaseModel):

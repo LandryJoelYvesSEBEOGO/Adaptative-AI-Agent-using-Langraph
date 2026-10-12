@@ -254,6 +254,46 @@ def get_latency_trend(days: int = 7) -> List[Dict]:
     ]
 
 
+def evaluate_alerts() -> List[Dict]:
+    """Seuils dépassés sur la fenêtre récente : taux d'erreur et latence p95 (succès)."""
+    settings = get_settings()
+    since = datetime.now(UTC) - timedelta(minutes=settings.ALERT_WINDOW_MINUTES)
+    with session_scope() as db:
+        rows = db.execute(
+            select(RagRequest.status, RagRequest.latency_end_to_end).where(
+                RagRequest.created_at >= since
+            )
+        ).all()
+    if len(rows) < settings.ALERT_MIN_REQUESTS:
+        return []
+
+    alerts: List[Dict] = []
+    error_rate = sum(1 for status, _ in rows if status == "error") / len(rows)
+    if error_rate > settings.ALERT_ERROR_RATE:
+        alerts.append(
+            {
+                "kind": "error_rate",
+                "message": (
+                    f"Taux d'erreur de {error_rate:.0%} sur {settings.ALERT_WINDOW_MINUTES} min "
+                    f"({len(rows)} requêtes ; seuil {settings.ALERT_ERROR_RATE:.0%})"
+                ),
+            }
+        )
+    latencies = [latency for status, latency in rows if status == "success" and latency is not None]
+    p95 = _percentile(latencies, 0.95)
+    if latencies and p95 > settings.ALERT_LATENCY_P95_SECONDS:
+        alerts.append(
+            {
+                "kind": "latency",
+                "message": (
+                    f"Latence p95 de {p95:.1f} s sur {settings.ALERT_WINDOW_MINUTES} min "
+                    f"(seuil {settings.ALERT_LATENCY_P95_SECONDS:.0f} s)"
+                ),
+            }
+        )
+    return alerts
+
+
 DEGRADED_ERROR_RATE = 0.2
 MIN_REQUESTS_FOR_DEGRADED = 5
 
@@ -286,4 +326,5 @@ def get_system_status() -> Dict:
         "llm_status": llm_status,
         "availability_24h": round(100 * (total - errors) / total, 1) if total else None,
         "documents_ready": documents_ready,
+        "alerts": evaluate_alerts(),
     }

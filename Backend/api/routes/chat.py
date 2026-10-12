@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
+from api.alerts import notify_if_needed
 from api.dependencies import get_current_user
 from api.models.chat import (
     ChatQueryRequest,
@@ -67,6 +68,7 @@ def _persist_outcome(
         answer_quality_score=result.get("answer_quality_score"),
         answer_quality_scores=result.get("answer_quality_scores"),
     )
+    notify_if_needed()
     return message_id
 
 
