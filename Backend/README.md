@@ -36,7 +36,7 @@ uv run uvicorn api.main:app --reload --port 8000
 | `api/models/` | Schémas Pydantic des requêtes et réponses |
 | `api/database.py`, `api/db_models.py`, `alembic/` | SQLAlchemy 2 (PostgreSQL ou SQLite) et migrations Alembic |
 | `config/Config.py` | Paramètres du pipeline (modèles, reranker, hybrid search, grading…) |
-| `src/rag/` | Ingestion des documents, prompts, graphe LangGraph |
+| `src/rag/` | Ingestion (`Data_processing.py`), prompts, et moteur RAG découpé : `retrieval/`, `generation/`, `grading/`, `routing.py`, `graph.py` (LangGraph), `answer.py` ; `Rag_model.py` reste une façade de compatibilité |
 | `src/core/` | Logs, métriques, retry / circuit breaker, fallback, rotation des clés Groq |
 | `scripts/` | Utilitaires lancés à la main |
 | `tests/` | Tests |

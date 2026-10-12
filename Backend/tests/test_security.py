@@ -1,25 +1,10 @@
 """Tests de sécurité du lot 1 (L1.2 à L1.6)."""
 
-import os
-import sys
-import tempfile
-from pathlib import Path
-
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from tests.api_stub import install
 
-os.environ["JWT_SECRET_KEY"] = "test-secret-" + "x" * 40
-os.environ["RAG_DB_PATH"] = str(Path(tempfile.mkdtemp()) / "test.db")
-
-import types  # noqa: E402
-
-# Le moteur RAG (Rag_model) initialise LLM/Tavily à l'import : on le remplace ici,
-# ces tests ne portent que sur la couche HTTP/sécurité.
-_fake = types.ModuleType("api.services.chat_service")
-_fake.process_rag_query = lambda **kw: {"response": "ok", "citations": [], "success": True}
-_fake.process_rag_query_stream = lambda **kw: iter(["ok"])
-sys.modules["api.services.chat_service"] = _fake
+install()
 
 from fastapi.testclient import TestClient  # noqa: E402
 

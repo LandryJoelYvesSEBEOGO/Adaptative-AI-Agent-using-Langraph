@@ -1,41 +1,25 @@
 """L2.5 : une requête RAG lente ne doit pas bloquer l'API."""
 
 import asyncio
-import os
-import sys
-import tempfile
 import time
-import types
-from pathlib import Path
 
 import httpx
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from tests.api_stub import install
 
-os.environ["JWT_SECRET_KEY"] = "test-secret-" + "x" * 40
-os.environ["RAG_DB_PATH"] = str(Path(tempfile.mkdtemp()) / "concurrency.db")
+fake = install()
 
 DELAY = 0.6
 
-
-def _slow_rag(**kwargs):
-    time.sleep(DELAY)  # simule un appel LLM bloquant
-    return {
-        "response": "ok",
-        "citations": [],
-        "success": True,
-        "conversation_id": kwargs["conversation_id"],
-    }
-
-
-# Remplace le moteur RAG (initialisation LLM à l'import) par une version lente et bloquante.
-_fake = types.ModuleType("api.services.chat_service")
-_fake.process_rag_query = _slow_rag
-_fake.process_rag_query_stream = lambda **kw: iter(["ok"])
-sys.modules["api.services.chat_service"] = _fake
-
 from api.main import app, lifespan  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def slow_rag():
+    fake.rag_delay = DELAY  # simule un appel LLM bloquant
+    yield
+    fake.rag_delay = 0.0
 
 
 @pytest.mark.anyio

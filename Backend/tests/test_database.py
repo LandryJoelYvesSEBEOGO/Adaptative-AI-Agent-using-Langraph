@@ -1,18 +1,12 @@
 """Tests de la couche base de données (L2.3) : migrations, services, métriques."""
 
-import os
-import sys
-import tempfile
-from pathlib import Path
-
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+from tests.api_stub import install
 
-os.environ["JWT_SECRET_KEY"] = "test-secret-" + "x" * 40
-os.environ["RAG_DB_PATH"] = str(Path(tempfile.mkdtemp()) / "db-test.db")
-os.environ["ADMIN_EMAIL"] = "boss@example.com"
-os.environ["ADMIN_PASSWORD"] = "Sup3rS3cret!"
+install()
+
+from pathlib import Path  # noqa: E402
 
 from alembic.autogenerate import compare_metadata  # noqa: E402
 from alembic.config import Config as AlembicConfig  # noqa: E402

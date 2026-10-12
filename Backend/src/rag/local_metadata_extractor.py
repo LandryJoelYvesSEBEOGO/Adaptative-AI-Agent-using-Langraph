@@ -11,7 +11,7 @@ Modèles utilisés:
 import os
 import sys
 import warnings
-from typing import List, Dict, Optional
+from typing import List, Dict
 from langchain_core.documents import Document
 
 # Ajouter le répertoire racine au path

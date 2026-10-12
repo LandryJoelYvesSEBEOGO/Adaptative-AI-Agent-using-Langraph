@@ -12,12 +12,10 @@ sys.path.insert(0, str(project_root))
 
 from api.services.conversation_service import list_messages
 from config.Config import Config
-from src.rag.Rag_model import (
-    GraphState,
-    Rewrite_query,
-    extract_sources_from_documents,
-    graph,
-)
+from src.rag.generation.formatting import extract_sources_from_documents
+from src.rag.generation.rewrite import Rewrite_query
+from src.rag.graph import get_graph
+from src.rag.state import GraphState
 
 
 def _normalize_text(text: Optional[str]) -> str:
@@ -183,7 +181,7 @@ def process_rag_query(question: str, conversation_id: Optional[str] = None) -> D
         )
 
         # Exécution du workflow
-        final_state = graph.invoke(initial_state)
+        final_state = get_graph().invoke(initial_state)
 
         # Extraction de la réponse
         generation = final_state.get("generation")
@@ -279,13 +277,10 @@ def process_rag_query_stream(
         )
 
         # Exécuter les étapes jusqu'à la génération
-        from src.rag.Rag_model import (
-            generate_stream,
-            grade_documents,
-            retrieve,
-            route_question,
-            web_search,
-        )
+        from src.rag.generation.generate import generate_stream
+        from src.rag.grading.documents import grade_documents
+        from src.rag.retrieval.nodes import retrieve, web_search
+        from src.rag.routing import route_question
 
         current_state = initial_state
 
