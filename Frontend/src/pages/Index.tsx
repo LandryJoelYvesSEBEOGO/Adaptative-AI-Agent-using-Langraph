@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   Brain, 
   ArrowRight, 
@@ -456,10 +456,10 @@ const Index = () => {
           </div>
         </div>
         <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-neutral-800 text-xs flex justify-between">
-          <span>© 2024 RAG System. Tous droits réservés.</span>
+          <span>© {new Date().getFullYear()} RAG System. Tous droits réservés.</span>
           <div className="flex gap-4">
-            <span className="hover:text-white cursor-pointer">Confidentialité</span>
-            <span className="hover:text-white cursor-pointer">Mentions légales</span>
+            <Link to="/confidentialite" className="hover:text-white">Confidentialité</Link>
+            <Link to="/mentions-legales" className="hover:text-white">Mentions légales</Link>
           </div>
       </div>
       </footer>

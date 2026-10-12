@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { errorMessage } from "@/api/errors";
@@ -200,6 +200,18 @@ const Login = () => {
                 )}
               </Button>
             </form>
+
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              {mode === "register" ? "En créant un compte, vous acceptez notre " : "Voir notre "}
+              <Link to="/confidentialite" className="underline hover:text-foreground">
+                politique de confidentialité
+              </Link>{" "}
+              et les{" "}
+              <Link to="/mentions-legales" className="underline hover:text-foreground">
+                mentions légales
+              </Link>
+              .
+            </p>
           </CardContent>
         </Card>
       </div>

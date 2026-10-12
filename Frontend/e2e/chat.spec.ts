@@ -22,6 +22,17 @@ async function ask(page: Page, question: string) {
   await page.getByLabel("Votre question").press("Enter");
 }
 
+test.describe("pages légales", () => {
+  test("accessibles sans connexion depuis la page de connexion", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByRole("link", { name: "politique de confidentialité" }).click();
+    await expect(page).toHaveURL(/\/confidentialite$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Politique de confidentialité" })).toBeVisible();
+    await page.goto("/mentions-legales");
+    await expect(page.getByRole("heading", { level: 1, name: "Mentions légales" })).toBeVisible();
+  });
+});
+
 test.describe("authentification", () => {
   test("une route protégée renvoie vers la connexion, puis revient après connexion", async ({ page }) => {
     await page.goto("/chat");

@@ -184,7 +184,7 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L5.2** Rate limiting et quotas par utilisateur. *Fenêtre glissante en mémoire par processus (voir limites dans `api/ratelimit.py`) ; quota quotidien compté en base, donc global.*
 - [x] **L5.3** Observabilité (Langfuse / LangSmith, logs structurés, alertes de latence et d'erreurs). *Logs JSON + identifiant de requête, callback Langfuse (testé avec un faux paquet : le paquet réel n'a pas été exécuté), LangSmith par variables d'environnement, alertes journalisées + webhook (non envoyé à un vrai service) et visibles sur le dashboard.*
 - [x] **L5.4** Sauvegardes de la base, rotation des secrets. *Scripts `backup_db.sh` / `restore_db.sh` / `verify_backup.sh` testés sur PostgreSQL 16 (sauvegarde, restauration, vérification) ; service Compose `backup` (profil) non lancé faute de Docker ; rotation du JWT sans déconnexion (`JWT_SECRET_KEY_PREVIOUS`) ; procédures dans `docs/EXPLOITATION.md`.*
-- [ ] **L5.5** Pages légales (mentions, confidentialité).
+- [x] **L5.5** Pages légales (mentions, confidentialité). *Pages `/mentions-legales` et `/confidentialite` liées depuis le pied de page et la connexion. Texte modèle : les champs « À COMPLÉTER » (éditeur, hébergeur, DPO, sous-traitants, durées) sont à renseigner et à faire valider par un juriste avant ouverture publique.*
 
 ---
 

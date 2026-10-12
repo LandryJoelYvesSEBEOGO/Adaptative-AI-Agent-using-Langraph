@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
+import { LegalNotice, PrivacyPolicy } from "./pages/Legal";
 
 // Admin Pages
 import AdminLayout from "./components/admin/AdminLayout";
@@ -54,6 +55,8 @@ const App = () => (
             {/* Public routes */}
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/mentions-legales" element={<LegalNotice />} />
+            <Route path="/confidentialite" element={<PrivacyPolicy />} />
 
             {/* User routes */}
             <Route
