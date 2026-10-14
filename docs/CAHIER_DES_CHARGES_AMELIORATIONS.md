@@ -146,45 +146,45 @@ Chaque exigence a un identifiant, une description et un critère d'acceptation v
 - [x] **L1.6** Ne plus renvoyer le détail des exceptions au client ; authentifier et persister `/feedback`.
 - [x] **L1.7** Corriger le prompt du routeur pour le corpus actuel (R1).
 
-### Lot 2 — Fondations backend *(~1 semaine)*
+### Lot 2 — Fondations backend *(terminé)*
 
-- [ ] **L2.1** Migrer vers uv + `pyproject.toml` ; ajouter ruff et pyright.
-- [ ] **L2.2** Configuration via `pydantic-settings` (environnements dev / prod, aucune valeur sensible en dur, `FORCE_GPU` supprimé).
-- [ ] **L2.3** PostgreSQL + SQLAlchemy 2 + Alembic ; tables `users`, `conversations`, `messages`, `rag_requests`, `feedback`, `documents`.
-- [ ] **L2.4** Découper `Rag_model.py` en modules (`retrieval/`, `generation/`, `grading/`, `graph.py`) sans effet de bord à l'import.
-- [ ] **L2.5** Routes async ; le travail bloquant sort de la boucle d'événements. *Acceptation : deux requêtes simultanées sont traitées en parallèle.*
-- [ ] **L2.6** Supprimer le code dupliqué (`metrics_service.py`) et le système de métriques JSONL redondant.
-- [ ] **L2.7** `docker compose` (api, postgres, frontend) + CI GitHub Actions (lint, typage, tests, build).
+- [x] **L2.1** Migrer vers uv + `pyproject.toml` ; ajouter ruff et pyright.
+- [x] **L2.2** Configuration via `pydantic-settings` (environnements dev / prod, aucune valeur sensible en dur, `FORCE_GPU` supprimé).
+- [x] **L2.3** PostgreSQL + SQLAlchemy 2 + Alembic ; tables `users`, `conversations`, `messages`, `rag_requests`, `feedback`, `documents`.
+- [x] **L2.4** Découper `Rag_model.py` en modules (`retrieval/`, `generation/`, `grading/`, `graph.py`) sans effet de bord à l'import.
+- [x] **L2.5** Routes async ; le travail bloquant sort de la boucle d'événements. *Acceptation : deux requêtes simultanées sont traitées en parallèle.*
+- [x] **L2.6** Supprimer le code dupliqué (`metrics_service.py`) et le système de métriques JSONL redondant.
+- [x] **L2.7** `docker compose` (api, postgres, frontend) + CI GitHub Actions (lint, typage, tests, build).
 
-### Lot 3 — Qualité du RAG *(1 à 2 semaines)*
+### Lot 3 — Qualité du RAG *(code livré ; mesures qualité à exécuter)*
 
-- [ ] **L3.1** Établir une **mesure de référence** sur le jeu FinanceBench (exactitude, fidélité, latence, coût) avant toute modification.
-- [ ] **L3.2** Ingestion Docling avec conservation des tableaux, chunking par sections, métadonnées (société, année, type de document, page).
-- [ ] **L3.3** Recherche hybride pgvector + full-text avec fusion RRF ; reranker hébergé avec seuil de score.
-- [ ] **L3.4** Graphe simplifié : réécriture (seulement si historique) → recherche hybride → rerank → génération ; recherche web uniquement si les scores de rerank sont sous le seuil. Suppression du grading LLM par document. *Acceptation : ≤ 3 appels LLM par question dans le cas nominal, score d'évaluation ≥ référence.*
-- [ ] **L3.5** Vrai streaming token par token via le graphe (`astream` / `stream_mode="messages"`), un seul chemin d'exécution.
-- [ ] **L3.6** Sorties structurées (Pydantic) pour toutes les étapes qui renvoient du JSON.
-- [ ] **L3.7** Endpoint d'upload + ingestion asynchrone + statut par document *(si option B retenue)*.
-- [ ] **L3.8** Évaluation automatique en CI sur un sous-ensemble du jeu de référence.
+- [~] **L3.1** Établir une **mesure de référence** sur le jeu FinanceBench (exactitude, fidélité, latence, coût) avant toute modification. *Outillage livré (`Backend/evaluation/`) ; la mesure elle-même reste à exécuter avec vos clés et le corpus (voir `Backend/evaluation/README.md`). Le coût en tokens n'est pas mesuré.*
+- [x] **L3.2** Ingestion Docling avec conservation des tableaux, chunking par sections, métadonnées (société, année, type de document, page). *Parsing Docling non exécuté ici (modèles non téléchargeables) ; chunking, métadonnées et repli pypdf testés.*
+- [x] **L3.3** Recherche hybride pgvector + full-text avec fusion RRF ; reranker hébergé avec seuil de score. *Recherche validée sur PostgreSQL 16 + pgvector ; clients Cohere / OpenAI testés avec HTTP simulé (pas d'appel réel). Le seuil `RERANK_MIN_SCORE` est à calibrer.*
+- [x] **L3.4** Graphe simplifié : réécriture (seulement si historique) → recherche hybride → rerank → génération ; recherche web uniquement si les scores de rerank sont sous le seuil. Suppression du grading LLM par document. *Acceptation : ≤ 3 appels LLM par question dans le cas nominal (vérifié : 1 appel, 2 avec historique), score d'évaluation ≥ référence (**non vérifié** : nécessite la mesure L3.1).*
+- [x] **L3.5** Vrai streaming token par token via le graphe (`astream` / `stream_mode="messages"`), un seul chemin d'exécution.
+- [x] **L3.6** Sorties structurées (Pydantic) pour toutes les étapes qui renvoient du JSON.
+- [x] **L3.7** Endpoint d'upload + ingestion asynchrone + statut par document *(si option B retenue)*. *Réalisé de façon neutre vis-à-vis de la décision produit : upload réservé aux administrateurs (corpus partagé), `owner_id` conservé pour l'option B ; CLI `scripts/ingest_corpus.py` pour l'option A. Tâche de fond FastAPI (`BackgroundTasks`), pas encore arq.*
+- [x] **L3.8** Évaluation automatique en CI sur un sous-ensemble du jeu de référence. *Garde-fou de retrieval à chaque PR (testé, y compris par mutation) ; workflow d'évaluation complète lancé à la demande (YAML validé, **jamais exécuté** : nécessite vos secrets).*
 
-### Lot 4 — Frontend *(~1 semaine)*
+### Lot 4 — Frontend *(terminé)*
 
-- [ ] **L4.1** Mise à jour React 19, Vite, Tailwind 4, React Router 7 ; TypeScript strict.
-- [ ] **L4.2** Client API généré depuis l'OpenAPI ; suppression des deux clients manuels.
-- [ ] **L4.3** TanStack Query pour tout l'état serveur.
-- [ ] **L4.4** Rendu Markdown sécurisé des réponses (tableaux, code).
-- [ ] **L4.5** Citations au survol + panneau des sources avec aperçu de la page PDF.
-- [ ] **L4.6** Boutons Stop (annulation côté serveur), Régénérer, Copier ; feedback persisté.
-- [ ] **L4.7** Pages admin réelles (Documents, Utilisateurs) ; suppression ou masquage des pages factices.
-- [ ] **L4.8** Suppression des reliquats Lovable et des composants shadcn inutilisés ; auth par cookie httpOnly.
+- [x] **L4.1** Mise à jour React 19, Vite, Tailwind 4, React Router 7 ; TypeScript strict. *Montées : React 19.3, Vite 8.3, Tailwind 4.3, React Router 7.18, Recharts 3.10, TypeScript 5.9 strict ; rendu comparé avant/après par captures (écarts : ombres personnalisées et interlignage des titres, désormais conformes au code).*
+- [x] **L4.2** Client API généré depuis l'OpenAPI ; suppression des deux clients manuels. *`openapi-typescript` + `openapi-fetch`, schéma versionné et contrôlé en CI ; renouvellement transparent de session ; flux SSE typé à la main (hors OpenAPI).*
+- [x] **L4.3** TanStack Query pour tout l'état serveur. *Session, conversations, messages, avis (mise à jour optimiste) et pages d'administration ; le flux de génération reste un état local par nature.*
+- [x] **L4.4** Rendu Markdown sécurisé des réponses (tableaux, code). *`react-markdown` + `remark-gfm` + `rehype-sanitize` ; scripts, `onerror` et liens `javascript:` neutralisés (testés) ; renvois `[n]` rendus en badges.*
+- [x] **L4.5** Citations au survol + panneau des sources avec aperçu de la page PDF. *Vérifié en navigateur sur un vrai PDF servi par l'API (pdf.js « legacy », worker local) ; aucune capture sur un vrai 10-K.*
+- [x] **L4.6** Boutons Stop (annulation côté serveur), Régénérer, Copier ; feedback persisté. *Vérifié en navigateur : arrêt (réponse partielle conservée et marquée), régénération sans doublon, avis conservé après rechargement.*
+- [x] **L4.7** Pages admin réelles (Documents, Utilisateurs) ; suppression ou masquage des pages factices. *Pages « Qualité » et « Paramètres » (données en dur) supprimées ; état du système désormais calculé (base, documents indexés, clé LLM, taux de réussite 24 h) au lieu de valeurs fixes.*
+- [x] **L4.8** Suppression des reliquats Lovable et des composants shadcn inutilisés ; auth par cookie httpOnly. *Jeton jamais stocké côté navigateur (plus de `localStorage`), refresh à rotation, contrôle CSRF.*
 
 ### Lot 5 — Mise en production
 
-- [ ] **L5.1** Déploiement (front statique + API conteneurisée + Postgres managé).
-- [ ] **L5.2** Rate limiting et quotas par utilisateur.
-- [ ] **L5.3** Observabilité (Langfuse / LangSmith, logs structurés, alertes de latence et d'erreurs).
-- [ ] **L5.4** Sauvegardes de la base, rotation des secrets.
-- [ ] **L5.5** Pages légales (mentions, confidentialité).
+- [x] **L5.1** Déploiement (front statique + API conteneurisée + Postgres managé). *`docker-compose.prod.yml` + Caddy (HTTPS), API non-root, guide `docs/DEPLOIEMENT.md` (VPS ou front statique + base managée). Rien n'a été exécuté (pas de Docker ici) : YAML validé seulement.*
+- [x] **L5.2** Rate limiting et quotas par utilisateur. *Fenêtre glissante en mémoire par processus (voir limites dans `api/ratelimit.py`) ; quota quotidien compté en base, donc global.*
+- [x] **L5.3** Observabilité (Langfuse / LangSmith, logs structurés, alertes de latence et d'erreurs). *Logs JSON + identifiant de requête, callback Langfuse (testé avec un faux paquet : le paquet réel n'a pas été exécuté), LangSmith par variables d'environnement, alertes journalisées + webhook (non envoyé à un vrai service) et visibles sur le dashboard.*
+- [x] **L5.4** Sauvegardes de la base, rotation des secrets. *Scripts `backup_db.sh` / `restore_db.sh` / `verify_backup.sh` testés sur PostgreSQL 16 (sauvegarde, restauration, vérification) ; service Compose `backup` (profil) non lancé faute de Docker ; rotation du JWT sans déconnexion (`JWT_SECRET_KEY_PREVIOUS`) ; procédures dans `docs/EXPLOITATION.md`.*
+- [x] **L5.5** Pages légales (mentions, confidentialité). *Pages `/mentions-legales` et `/confidentialite` liées depuis le pied de page et la connexion. Texte modèle : les champs « À COMPLÉTER » (éditeur, hébergeur, DPO, sous-traitants, durées) sont à renseigner et à faire valider par un juriste avant ouverture publique.*
 
 ---
 

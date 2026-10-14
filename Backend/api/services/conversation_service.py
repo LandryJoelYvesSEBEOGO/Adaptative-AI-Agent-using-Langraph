@@ -1,74 +1,60 @@
-import json
-import uuid
-from datetime import datetime
-from typing import List, Optional, Dict
+from datetime import UTC, datetime
+from typing import Dict, List, Optional
 
-from api.db import get_connection
+from sqlalchemy import select
 
-ISO = "%Y-%m-%dT%H:%M:%S.%fZ"
-
-
-def _now() -> str:
-    return datetime.utcnow().strftime(ISO)
+from api.database import session_scope
+from api.db_models import Conversation, Feedback, Message
 
 
-def create_conversation(user_email: str, title: Optional[str] = None) -> Dict:
-    conv_id = str(uuid.uuid4())
-    now = _now()
-
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO conversations (id, user_email, title, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (conv_id, user_email, title, now, now),
-    )
-    conn.commit()
-    conn.close()
-
+def _conv_dict(conv: Conversation) -> Dict:
     return {
-        "id": conv_id,
-        "title": title,
-        "created_at": now,
-        "updated_at": now,
+        "id": conv.id,
+        "title": conv.title,
+        "created_at": conv.created_at,
+        "updated_at": conv.updated_at,
     }
 
 
-def list_conversations(user_email: str) -> List[Dict]:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id, title, created_at, updated_at
-        FROM conversations
-        WHERE user_email = ?
-        ORDER BY updated_at DESC
-        """,
-        (user_email,),
-    )
-    rows = cur.fetchall()
-    conn.close()
-
-    return [dict(r) for r in rows]
+def _msg_dict(msg: Message) -> Dict:
+    return {
+        "id": msg.id,
+        "conversation_id": msg.conversation_id,
+        "role": msg.role,
+        "content": msg.content,
+        "citations": msg.citations or None,
+        "stopped": bool(msg.stopped),
+        "created_at": msg.created_at,
+    }
 
 
-def get_conversation(conversation_id: str, user_email: str) -> Optional[Dict]:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id, title, created_at, updated_at
-        FROM conversations
-        WHERE id = ? AND user_email = ?
-        """,
-        (conversation_id, user_email),
-    )
-    row = cur.fetchone()
-    conn.close()
+def create_conversation(user_id: str, title: Optional[str] = None) -> Dict:
+    with session_scope() as db:
+        conv = Conversation(user_id=user_id, title=title)
+        db.add(conv)
+        db.flush()
+        return _conv_dict(conv)
 
-    return dict(row) if row else None
+
+def list_conversations(user_id: str) -> List[Dict]:
+    with session_scope() as db:
+        rows = db.scalars(
+            select(Conversation)
+            .where(Conversation.user_id == user_id)
+            .order_by(Conversation.updated_at.desc())
+        )
+        return [_conv_dict(c) for c in rows]
+
+
+def get_conversation(conversation_id: str, user_id: str) -> Optional[Dict]:
+    """Retourne la conversation si elle appartient à l'utilisateur, sinon None."""
+    with session_scope() as db:
+        conv = db.scalar(
+            select(Conversation).where(
+                Conversation.id == conversation_id, Conversation.user_id == user_id
+            )
+        )
+        return _conv_dict(conv) if conv else None
 
 
 def add_message(
@@ -76,79 +62,42 @@ def add_message(
     role: str,
     content: str,
     citations: Optional[List[Dict]] = None,
+    stopped: bool = False,
 ) -> Dict:
-    msg_id = str(uuid.uuid4())
-    now = _now()
-
-    citations_json = json.dumps(citations) if citations is not None else None
-
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO messages (id, conversation_id, role, content, citations, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """,
-        (msg_id, conversation_id, role, content, citations_json, now),
-    )
-
-    cur.execute(
-        """
-        UPDATE conversations
-        SET updated_at = ?
-        WHERE id = ?
-        """,
-        (now, conversation_id),
-    )
-
-    conn.commit()
-    conn.close()
-
-    return {
-        "id": msg_id,
-        "conversation_id": conversation_id,
-        "role": role,
-        "content": content,
-        "citations": citations or None,
-        "created_at": now,
-    }
-
-
-def list_messages(conversation_id: str) -> List[Dict]:
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT id, conversation_id, role, content, citations, created_at
-        FROM messages
-        WHERE conversation_id = ?
-        ORDER BY created_at ASC
-        """,
-        (conversation_id,),
-    )
-    rows = cur.fetchall()
-    conn.close()
-
-    messages = []
-    for r in rows:
-        citations = json.loads(r["citations"]) if r["citations"] else None
-        messages.append(
-            {
-                "id": r["id"],
-                "conversation_id": r["conversation_id"],
-                "role": r["role"],
-                "content": r["content"],
-                "citations": citations,
-                "created_at": r["created_at"],
-            }
+    with session_scope() as db:
+        msg = Message(
+            conversation_id=conversation_id,
+            role=role,
+            content=content,
+            citations=citations if citations is not None else None,
+            stopped=stopped,
         )
-    return messages
+        db.add(msg)
+        conv = db.get(Conversation, conversation_id)
+        if conv:
+            conv.updated_at = datetime.now(UTC)
+        db.flush()
+        return _msg_dict(msg)
 
+
+def list_messages(conversation_id: str, user_id: Optional[str] = None) -> List[Dict]:
+    """Messages d'une conversation ; avec `user_id`, joint l'avis donné par cet utilisateur."""
+    with session_scope() as db:
+        stmt = select(Message, Feedback.feedback_type).outerjoin(
+            Feedback,
+            (Feedback.message_id == Message.id) & (Feedback.user_id == user_id),
+        )
+        rows = db.execute(
+            stmt.where(Message.conversation_id == conversation_id).order_by(
+                Message.created_at.asc()
+            )
+        )
+        return [{**_msg_dict(m), "feedback": feedback} for m, feedback in rows]
 
 
 def add_feedback(
     message_id: str,
-    user_email: str,
+    user_id: str,
     feedback_type: str,
     comment: Optional[str] = None,
 ) -> bool:
@@ -156,31 +105,50 @@ def add_feedback(
 
     Retourne False si le message n'existe pas ou n'appartient pas à l'utilisateur.
     """
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT 1 FROM messages m
-        JOIN conversations c ON c.id = m.conversation_id
-        WHERE m.id = ? AND c.user_email = ?
-        """,
-        (message_id, user_email),
-    )
-    if not cur.fetchone():
-        conn.close()
-        return False
+    with session_scope() as db:
+        owned = db.scalar(
+            select(Message.id)
+            .join(Conversation, Conversation.id == Message.conversation_id)
+            .where(Message.id == message_id, Conversation.user_id == user_id)
+        )
+        if not owned:
+            return False
 
-    cur.execute(
-        """
-        INSERT INTO feedback (id, message_id, user_email, feedback_type, comment, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(message_id, user_email) DO UPDATE SET
-            feedback_type = excluded.feedback_type,
-            comment = excluded.comment,
-            created_at = excluded.created_at
-        """,
-        (str(uuid.uuid4()), message_id, user_email, feedback_type, comment, _now()),
-    )
-    conn.commit()
-    conn.close()
-    return True
+        feedback = db.scalar(
+            select(Feedback).where(Feedback.message_id == message_id, Feedback.user_id == user_id)
+        )
+        if feedback:
+            feedback.feedback_type = feedback_type
+            feedback.comment = comment
+            feedback.created_at = datetime.now(UTC)
+        else:
+            db.add(
+                Feedback(
+                    message_id=message_id,
+                    user_id=user_id,
+                    feedback_type=feedback_type,
+                    comment=comment,
+                )
+            )
+        return True
+
+
+def prepare_regeneration(conversation_id: str) -> Optional[str]:
+    """Retire la dernière réponse de l'assistant et retourne la question à reposer.
+
+    Retourne None s'il n'y a pas de question utilisateur à régénérer."""
+    with session_scope() as db:
+        messages = list(
+            db.scalars(
+                select(Message)
+                .where(Message.conversation_id == conversation_id)
+                .order_by(Message.created_at.desc())
+                .limit(2)
+            )
+        )
+        if messages and messages[0].role == "assistant":
+            db.delete(messages[0])  # le feedback associé part en cascade
+            messages = messages[1:]
+        if not messages or messages[0].role != "user":
+            return None
+        return messages[0].content

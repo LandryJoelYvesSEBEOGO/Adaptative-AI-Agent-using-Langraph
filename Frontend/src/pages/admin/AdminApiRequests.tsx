@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,35 +12,14 @@ import {
 } from "@/components/ui/select";
 import { Search, Filter, Download, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { apiClient, ApiError, RequestDetail } from "@/services/api";
-import { useToast } from "@/hooks/use-toast";
+import { useRequestDetails } from "@/api/hooks";
+import QueryError from "@/components/QueryError";
 
 const AdminApiRequests = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [requests, setRequests] = useState<RequestDetail[]>([]);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const loadRequests = async () => {
-      try {
-        const data = await apiClient.getAdminRequests(100);
-        setRequests(data);
-      } catch (error) {
-        const apiError =
-          error instanceof ApiError
-            ? error
-            : new ApiError(error instanceof Error ? error.message : "Erreur lors du chargement");
-        toast({
-          title: "Erreur",
-          description: apiError.getUserMessage(),
-          variant: "destructive",
-        });
-      }
-    };
-
-    loadRequests();
-  }, [toast]);
+  const requestsQuery = useRequestDetails(100);
+  const requests = useMemo(() => requestsQuery.data ?? [], [requestsQuery.data]);
 
   const filteredRequests = useMemo(() => {
     return requests.filter((req) => {
@@ -62,6 +41,10 @@ const AdminApiRequests = () => {
           Historique et gestion des requêtes du système RAG
         </p>
       </div>
+
+      {requestsQuery.isError && (
+        <QueryError error={requestsQuery.error} onRetry={() => void requestsQuery.refetch()} />
+      )}
 
       {/* Filters */}
       <Card>

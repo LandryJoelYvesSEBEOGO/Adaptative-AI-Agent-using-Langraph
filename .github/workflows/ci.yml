@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [Landry, Improvements, "lot-*"]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
+    env:
+      JWT_SECRET_KEY: ci-secret-key-0123456789-0123456789-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - name: Installer les dépendances (sans les modèles locaux lourds)
+        run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check api config src evaluation alembic tests
+      - name: Format
+        run: uv run ruff format --check api config src evaluation alembic tests
+      - name: Typage
+        run: uv run pyright
+      - name: Tests
+        run: uv run pytest -q
+
+  backend-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: rag
+          POSTGRES_PASSWORD: rag
+          POSTGRES_DB: rag
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rag" --health-interval 5s
+          --health-timeout 3s --health-retries 10
+    defaults:
+      run:
+        working-directory: Backend
+    env:
+      JWT_SECRET_KEY: ci-secret-key-0123456789-0123456789-0123456789
+      DATABASE_URL: postgresql+psycopg://rag:rag@localhost:5432/rag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - run: uv sync --frozen
+      - name: Tests sur PostgreSQL (base, recherche hybride, ingestion, garde-fou de retrieval)
+        run: uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - run: npm ci
+      - name: Typage (TypeScript strict)
+        run: npm run typecheck
+      - name: Lint
+        run: npx eslint .
+      - name: Tests unitaires
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  e2e:
+    # Parcours navigateur : connexion, chat en streaming, sources + PDF, Stop, administration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: Backend/uv.lock
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - name: Dépendances du backend
+        working-directory: Backend
+        run: uv sync --frozen
+      - name: Dépendances du frontend
+        working-directory: Frontend
+        run: npm ci
+      - name: Navigateur Playwright
+        working-directory: Frontend
+        run: npx playwright install --with-deps chromium
+      - name: Build du frontend
+        working-directory: Frontend
+        run: npm run build
+      - name: Tests de bout en bout
+        working-directory: Frontend
+        env:
+          JWT_SECRET_KEY: ci-secret-key-0123456789-0123456789-0123456789
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: Frontend/playwright-report

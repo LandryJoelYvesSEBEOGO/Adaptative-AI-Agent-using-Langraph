@@ -1,0 +1,13 @@
+.venv
+venv
+.ruff_cache
+.pytest_cache
+__pycache__
+*.pyc
+.env
+tests
+data/raw
+data/chroma_db
+data/logs
+data/*.db
+data/*.pkl

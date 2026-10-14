@@ -55,3 +55,4 @@ data/metrics/
 .DS_Store
 Thumbs.db
 desktop.ini
+results/
