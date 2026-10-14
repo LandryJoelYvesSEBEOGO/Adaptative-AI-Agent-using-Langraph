@@ -8,7 +8,9 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1
 # Dépendances d'abord (couche mise en cache). `--extra ml` : reranker et modèles locaux.
 COPY pyproject.toml uv.lock ./
 ARG UV_EXTRAS="--extra ml --extra ingest"
-RUN uv sync --frozen --no-dev --no-install-project ${UV_EXTRAS}
+# Cache uv monté hors de l'image : sinon chaque paquet y est stocké deux fois.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project ${UV_EXTRAS}
 
 COPY . .
 ENV PATH="/app/.venv/bin:$PATH"
