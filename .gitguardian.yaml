@@ -1,0 +1,12 @@
+# Configuration de ggshield / GitGuardian.
+# Ces chemins ne contiennent que des identifiants fictifs : comptes de test créés dans une base
+# jetable (tests unitaires et parcours Playwright) et mot de passe de développement du compose local.
+# Les vraies clés (Groq, Tavily, JWT…) vivent uniquement dans Backend/.env, qui n'est pas versionné.
+version: 2
+secret:
+  ignored_paths:
+    - "Backend/tests/**"
+    - "Frontend/e2e/**"
+  ignored_matches:
+    - name: Mot de passe PostgreSQL par défaut du compose de développement
+      match: "rag"
